@@ -10,6 +10,12 @@ March 14, 2023
 Based on https://github.com/epics-motor/motorAcs/blob/master/acsApp/src/TrinamicDriver.cpp
 	by Mark Rivers
 
+
+Command List:
+
+
+
+
 */
 
 #include <stdio.h>
@@ -23,6 +29,12 @@ Based on https://github.com/epics-motor/motorAcs/blob/master/acsApp/src/Trinamic
 #include <epicsThread.h>
 
 #define NINT(f) (int)((f)>0 ? (f)+0.5 : (f)-0.5)
+
+uint8_t* calcTrinamicChecksum(uint8_t* command)
+{
+	return 0
+}
+
 
 /** Creates a new TrinamicController object.
   * \param[in] portName          The name of the asyn port that will be created for this driver
@@ -218,15 +230,69 @@ asynStatus TrinamicAxis::poll(bool *moving)
 	// the response is in the form TODO
 	position = atof(&pC_->inString_[5]);
 	setDoubleParam(pC_->motorPosition_, position);
+	if (comStatus) goto skip;
 
 	// Read the moving status of this motor
-	// Read the limit status
-	// Read the drive power on status (?)
+	sprintf(pC_->outString_, "TODO", axisNo_);
+	comStatus = pC_->writeReadController();
+	if (comStatus) goto skip;
+	// the response is in the form TODO
+	done = (pC_->inString_[5] == '0') ? 1:0;
+	setIntegerParam(pC_->motorStatusDone_, done);
+	*moving = done ? false:true;	
 
+	// Read the limit status
+	sprintf(pC_->outString_, "TODO", axisNo_);
+	comStatus = pC_->writeReadController();
+	if (comStatus) goto skip;
+	// the response is in the form TODO
+	limit = (pC_->inString_[5] == '1') ? 1:0;
+	setIntegerParam(pC_->motorStatusHighLimit_, limit);
+	limit = (pC_->inString_[6] == '1') ? 1:0;
+	setIntegerParam(pC_->motorStatusLowLimit_, limit);
+	limit = (pC_->inString_[7] == '1') ? 1:0;
+	setIntegerParam(pC_->motorStatusAtHome_, limit);
+
+	// Read the drive power on status (?)
+	sprintf(pC_->outString_, "TODO", axisNo_);
+	comStatus = pC_->writeReadController();
+	if (comStatus) goto skip;
+	// the response is in the form TODO
+	driveOn = (pC_->inString_[5] == '1') ? 1:0;
+	setIntegerParam(pC_->motorStatusPowerOn_, driveOn);
+	setIntegerParam(pC_->motorStatusProblem_, 0);
 
 	// TODO: what this do???
 	skip:
 	setIntegerParam(pC_->motorStatusProblem_, comStatus ? 1:0);
 	callParamCallbacks();
 	return comStatus ? asynError : asynSuccess;
+}
+
+/** Code for iocsh registration */
+static const iocshArg TrinamicCreateControllerArg0 = {"Port name", iocshArgString};
+static const iocshArg TrinamicCreateControllerArg1 = {"Trinamic port name", iocshArgString};
+static const iocshArg TrinamicCreateControllerArg2 = {"Number of axes", iocshArgInt};
+static const iocshArg TrinamicCreateControllerArg3 = {"Moving poll period (ms)", iocshArgInt};
+static const iocshArg TrinamicCreateControllerArg4 = {"Idle poll period (ms)", iocshArgInt};
+static const iocshArg * const TrinamicCreateControllerArgs[] = {&TrinamicCreateControllerArg0,
+                                                             &TrinamicCreateControllerArg1,
+                                                             &TrinamicCreateControllerArg2,
+                                                             &TrinamicCreateControllerArg3,
+                                                             &TrinamicCreateControllerArg4};
+static const iocshFuncDef TrinamicCreateControllerDef = {"TrinamicCreateController", 5, 
+	TrinamicCreateControllerArgs};
+
+static void TrinamicCreateContollerCallFunc(const iocshArgBuf *args)
+{
+	TrinamicCreateController(args[0].sval, args[1].sval, args[2].ival, args[3].ival, args[4].ival);
+}
+
+static void TrinamicRegister(void)
+{
+	iocshRegister(&TrinamicCreateControllerDef, TrinamicCreateContollerCallFunc);
+}
+
+extern "C" {
+	epicsExportRegistrar(TrinamicRegister);
 }
