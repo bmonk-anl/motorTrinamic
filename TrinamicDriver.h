@@ -23,6 +23,7 @@ class epicsShareClass TrnamicAxis : public asynMotorAxis
 	private:
 		TrinamicController* pC_;
 		//functions below for controller specific commands
+		asynStatus sendAccelAndVelocity(double accel, double velocity);
 	friend class TrinamicController;
 };
 

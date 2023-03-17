@@ -11,15 +11,54 @@ Based on https://github.com/epics-motor/motorAcs/blob/master/acsApp/src/Trinamic
 	by Mark Rivers
 
 
+*/
+
+/*
+
+TODO: add support for STAP? (store axis parameter)
+
+CONTROLLER NOTES:
+ 
+some parameters use internal units - refer to TMCL firmware manual p. 124 for conversion
+
+Command format (bytes):
+1. module address - default is 0x01 for serial (1)
+2. command number (1)
+3. type number (1)
+4. motor or bank number (1)
+5. value - msb first (4)
+6. checksum (1)
+
+// TODO: add multiple address suppport
+
 Command List:
 
+set vel: <address> 05 04 <motor #> <vel (4)> <checksum>
+set accl: <address> 05 05 <motor #> <accel (4)> <checksum>
+move abs: <address> 04 00 <motor #> <position (4)> <checksum> 
+move rel: <address> 04 01 <motor #> <rel position (4)> <checksum>
+move vel: <address> 01/02 00 (rotate right/left) <vel position (4)> <checksum> 
+stop: <address> 03 00 <motor #> 00 00 00 00 <checksum>
+set pos: <address> 05 01 <motor #> <position (4)> <checksum> 
+get pos: <address> 06 01 <motor #> 00 00 00 00 <checksum> 
+get moving status (position reached flag, 0 if moving): <address> 06 08 <motor #> 00 00 00 00 <checksum>
+	maybe check speed param instead? (GAP 0x03)
+get lim status: <address> 06 0A/0B (right/left) <motor #> 00 00 00 00 <checksum>
+get drive pwr on (?): NOT SUPPORTED: always on - unless turn current to 0?
+set pulse div: <address> 05 9A <motor #> <value (4)> <checksum>
+set ramp div: <address> 05 99 <motor #> <value (4)> <checksum>
 
-
+Units: 
+position: microsteps
+velocity: internal units (int)
+accel: internal units (int)
 
 */
 
 #include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
+#include <math.h>
 
 #include <TrinamicDriver.h>
 
@@ -30,9 +69,17 @@ Command List:
 
 #define NINT(f) (int)((f)>0 ? (f)+0.5 : (f)-0.5)
 
-uint8_t* calcTrinamicChecksum(uint8_t* command)
+// set checksum directly in function or return number?
+void calcTrinamicChecksum(uint8_t* command)
 {
-	return 0
+	uint8_t checksum, i;
+
+	for(i=0; i<=8; i++) {
+		checksum += command[i];	
+	}
+
+	command[8] = checksum;
+	//return checksum; 
 }
 
 
@@ -142,6 +189,45 @@ void TrinamicAxis::report(FILE *fp, int level)
 	asynMotorAxis::report(fp, level);
 }
 
+
+asynStatus TrinamicAxis::sendAccelAndVelocity(double acceleration, double velocity)
+{
+	asynStatus status;
+	int pulse_div, ramp_div;
+	
+	// get pulse divisor
+	// TODO: what happens if no response?
+	sprintf(pC_->outString_, "TODO", axisNo_);
+	comStatus = pC_->writeReadController();
+	if (comStatus) goto skip;
+	// the response is in the form TODO
+	pulse_div = std::stoi(&pC_->inString_[5]);
+	
+	// get ramp divisor
+	sprintf(pC_->outString_, "TODO", axisNo_);
+	comStatus = pC_->writeReadController();
+	if (comStatus) goto skip;
+	// the response is in the form TODO
+	ramp_div = std::stoi(&pC_->inString_[5]);
+
+	// calculate velocity - convert microsteps to internal units
+	int v_int = NINT(velocity)*2
+
+	// send velocity
+	sprintf(pC->outString_, "TODO", axisNo_, todo);
+	status = pC_->writeReadController();
+	return status;
+
+	// send acceleration
+	sprintf(pC->outString_, "TODO", axisNo_, todo);
+	status = pC_->writeReadController();
+	return status;
+	
+	skip:
+	return asynError;
+
+}
+
 asynStatus TrinamicAxis::move(double position, int relative, double minVelocity, double maxVelocity,
 		double acceleration))
 {
@@ -230,7 +316,6 @@ asynStatus TrinamicAxis::poll(bool *moving)
 	// the response is in the form TODO
 	position = atof(&pC_->inString_[5]);
 	setDoubleParam(pC_->motorPosition_, position);
-	if (comStatus) goto skip;
 
 	// Read the moving status of this motor
 	sprintf(pC_->outString_, "TODO", axisNo_);
@@ -262,7 +347,6 @@ asynStatus TrinamicAxis::poll(bool *moving)
 	setIntegerParam(pC_->motorStatusPowerOn_, driveOn);
 	setIntegerParam(pC_->motorStatusProblem_, 0);
 
-	// TODO: what this do???
 	skip:
 	setIntegerParam(pC_->motorStatusProblem_, comStatus ? 1:0);
 	callParamCallbacks();
