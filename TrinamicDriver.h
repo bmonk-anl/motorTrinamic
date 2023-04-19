@@ -2,9 +2,15 @@
 #include "asynMotorAxis.h"
 
 #define MAX_TRINAMIC_AXES 6
-
-// No controller-specific parameters yet
 #define NUM_TRINAMIC_PARAMS 0 
+
+// fixed # of bytes that is sent with each command 
+#define TRINAMIC_CMD_SIZE 9
+
+#define TRINAMIC_ADDR 0
+#define PULSE_DIV 3
+#define RAMP_DIV 7
+
 
 class epicsShareClass TrnamicAxis : public asynMotorAxis
 {
@@ -36,6 +42,14 @@ class epicsShareClass TrinamicController : public asynMotorController
 		void report(FILE* fp, int level);
 		TrinamicAxis* getAxis(asynUser *pasynUser);
 		TrinamicAxis* getAxis(int axisNo);
+
+		// need to rewrite methods since raw binary is used in commands and this
+		// method uses strlen (will be wrong if data contains byte of 0)
+		asynStatus writeReadController()
+		asynStatus writeReadController(const char *output, char *input, 
+                                                    size_t maxChars, size_t *nread, double timeout)
+
+		char trinamicAddr = TRINAMIC_ADDR;
 
 	friend class TrinamicAxis;
 }

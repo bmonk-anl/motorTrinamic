@@ -70,9 +70,10 @@ accel: internal units (int)
 #define NINT(f) (int)((f)>0 ? (f)+0.5 : (f)-0.5)
 
 // set checksum directly in function or return number?
-void calcTrinamicChecksum(uint8_t* command)
+void calcTrinamicChecksum(char* command)
 {
-	uint8_t checksum, i;
+	char checksum;
+	int i;
 
 	for(i=0; i<=8; i++) {
 		checksum += command[i];	
@@ -82,6 +83,12 @@ void calcTrinamicChecksum(uint8_t* command)
 	//return checksum; 
 }
 
+int log2_fast(double d) 
+{
+	int result;
+    frexp(d, &result);
+    return result-1;
+}
 
 /** Creates a new TrinamicController object.
   * \param[in] portName          The name of the asyn port that will be created for this driver
@@ -160,6 +167,33 @@ TrinamicAxis* TrinamicController::getAxis(int axisNo)
 	return static_cast<TrinamicAxis*>(asynMotorController::getAxis(axisNo));
 }
 
+asynStatus TrinamicMotorController::writeReadController()
+{
+  size_t nread;
+  return writeReadController(outString_, inString_, sizeof(inString_), 
+		  &nread, DEFAULT_CONTROLLER_TIMEOUT);
+}
+
+asynStatus TrinamicMotorController::writeReadController(const char *output, char *input, 
+                                                    size_t maxChars, size_t *nread, double timeout)
+{
+  size_t nwrite;
+  asynStatus status;
+  int eomReason;
+  // const char *functionName="writeReadController";
+  
+  // status = pasynOctetSyncIO->writeRead(pasynUserController_, output,
+  //                                     strlen(output), input, maxChars, timeout,
+  //                                     &nwrite, nread, &eomReason);
+  
+  status = pasynOctetSyncIO->writeRead(pasynUserController_, output,
+                                       TRINAMIC_CMD_SIZE, input, maxChars, timeout,
+                                       &nwrite, nread, &eomReason);
+                        
+  return status;
+}
+
+
 // These are the TrinamicAxis methods
 
 /** Creates a new TrinamicAxis object.
@@ -194,38 +228,98 @@ asynStatus TrinamicAxis::sendAccelAndVelocity(double acceleration, double veloci
 {
 	asynStatus status;
 	int pulse_div, ramp_div;
-	
-	// get pulse divisor
-	// TODO: what happens if no response?
-	sprintf(pC_->outString_, "TODO", axisNo_);
-	comStatus = pC_->writeReadController();
-	if (comStatus) goto skip;
-	// the response is in the form TODO
-	pulse_div = std::stoi(&pC_->inString_[5]);
-	
-	// get ramp divisor
-	sprintf(pC_->outString_, "TODO", axisNo_);
-	comStatus = pC_->writeReadController();
-	if (comStatus) goto skip;
-	// the response is in the form TODO
-	ramp_div = std::stoi(&pC_->inString_[5]);
+	uint8_t command[9];
 
+	// get pulse divisor
+	// 
+	//// TODO: what happens if no response?
+	//sprintf(pC_->outString_, "TODO", axisNo_);
+	//comStatus = pC_->writeReadController();
+	//if (comStatus) goto skip;
+	//// the response is in the form TODO
+	//pulse_div = std::stoi(&pC_->inString_[5]);
+	//
+	//// get ramp divisor
+	//sprintf(pC_->outString_, "TODO", axisNo_);
+	//comStatus = pC_->writeReadController();
+	//if (comStatus) goto skip;
+	//// the response is in the form TODO
+	//ramp_div = std::stoi(&pC_->inString_[5]);
+	
+
+	// set pulse divisor
+	// format: <address> 05 9A <motor #> <value (4)> <checksum>
+	
+	pC_->outString_[0] = pC_->trinamicAddr;
+	pC_->outString_[1] = 0x05;
+	pC_->outString_[2] = 0x9A;
+	pC_->outString_[3] = (char)axisNo_;
+
+	// set 4 bytes of desired value
+	pC_->outString_[4] = 0x00;
+	pC_->outString_[5] = 0x00;
+	pC_->outString_[6] = 0x00;
+	pC_->outString_[7] = PULSE_DIV;
+	
+	calcTrinamicChecksum(pC_->outString_);
+
+	status = pC_->writeReadController();
+	
+	// set ramp divisor
+	// format: <address> 05 99 <motor #> <value (4)> <checksum>
+	pC_->outString_[0] = pC_->trinamicAddr;
+	pC_->outString_[1] = 0x05;
+	pC_->outString_[2] = 0x99;
+	pC_->outString_[3] = (char)axisNo_;
+
+	// set 4 bytes of desired value
+	pC_->outString_[4] = 0x00;
+	pC_->outString_[5] = 0x00;
+	pC_->outString_[6] = 0x00;
+	pC_->outString_[7] = RAMP_DIV;
+	
+	calcTrinamicChecksum(pC_->outString_);
+
+	status = pC_->writeReadController();
+	
 	// calculate velocity - convert microsteps to internal units
 	int v_int = NINT(velocity)*2
-
-	// send velocity
-	sprintf(pC->outString_, "TODO", axisNo_, todo);
-	status = pC_->writeReadController();
-	return status;
-
-	// send acceleration
-	sprintf(pC->outString_, "TODO", axisNo_, todo);
-	status = pC_->writeReadController();
-	return status;
 	
-	skip:
-	return asynError;
+	// TODO: convert int to char (check if out of char range?)
+	// set vel: <address> 05 04 <motor #> <vel (4)> <checksum>
+	// TODO: input actual velocity and accel
+	pC_->outString_[0] = pC_->trinamicAddr;
+	pC_->outString_[1] = 0x05;
+	pC_->outString_[2] = 0x04;
+	pC_->outString_[3] = (char)axisNo_;
 
+	// set 4 bytes of desired value
+	pC_->outString_[4] = 0x00;
+	pC_->outString_[5] = 0x00;
+	pC_->outString_[6] = 0x00;
+	pC_->outString_[7] = 0x00;
+	
+	calcTrinamicChecksum(pC_->outString_);
+
+	status = pC_->writeReadController();
+	
+	// set accl: <address> 05 05 <motor #> <accel (4)> <checksum>
+	pC_->outString_[0] = pC_->trinamicAddr;
+	pC_->outString_[1] = 0x05;
+	pC_->outString_[2] = 0x05;
+	pC_->outString_[3] = (char)axisNo_;
+
+	// set 4 bytes of desired value
+	pC_->outString_[4] = 0x00;
+	pC_->outString_[5] = 0x00;
+	pC_->outString_[6] = 0x00;
+	pC_->outString_[7] = 0x00;
+	
+	calcTrinamicChecksum(pC_->outString_);
+
+	status = pC_->writeReadController();
+
+	return status;
 }
 
 asynStatus TrinamicAxis::move(double position, int relative, double minVelocity, double maxVelocity,
@@ -234,18 +328,49 @@ asynStatus TrinamicAxis::move(double position, int relative, double minVelocity,
 	asynStatus status;
 
 	// set acceleration and velocity:
-	// TODO
-	// sprintf(pC->outString_, "TODO", axisNo_, ival);
-	// status = pC_->writeReadController();
+	status = sendAccelAndVelocity(acceleration, maxVelocity);
 	
+	// convert position to int and break up into 4 bytes (int is 32 bits)
+	int pos_int = NINT(position);
+	char pos_bytes [4] = {
+		(char)((pos_int & 0xFF000000) >> 24),
+		(char)((pos_int & 0x00FF0000) >> 16),
+		(char)((pos_int & 0x0000FF00) >> 8),
+		(char)(pos_int & 0x000000FF),
+	}
+
 	// send move command:
 	// TODO	
 	if (relative) {
-		sprintf(pC->outString_, "TODO", axisNo_, NINT(position));
+		// move rel: <address> 04 01 <motor #> <rel position (4)> <checksum>
+		pC_->outString_[0] = pC_->trinamicAddr;
+		pC_->outString_[1] = 0x04;
+		pC_->outString_[2] = 0x01;
+		pC_->outString_[3] = (char)axisNo_;
+
+		// set 4 bytes of desired value
+		pC_->outString_[4] = pos_bytes[0];
+		pC_->outString_[5] = pos_bytes[1];
+		pC_->outString_[6] = pos_bytes[2];
+		pC_->outString_[7] = pos_bytes[3];
+		
+		calcTrinamicChecksum(pC_->outString_);
 	}
 	else
 	{
-		sprintf(pC->outString_, "TODO", axisNo_, NINT(position));
+		// move abs: <address> 04 00 <motor #> <position (4)> <checksum> 
+		pC_->outString_[0] = pC_->trinamicAddr;
+		pC_->outString_[1] = 0x04;
+		pC_->outString_[2] = 0x00;
+		pC_->outString_[3] = (char)axisNo_;
+
+		// set 4 bytes of desired value
+		pC_->outString_[4] = pos_bytes[0];
+		pC_->outString_[5] = pos_bytes[1];
+		pC_->outString_[6] = pos_bytes[2];
+		pC_->outString_[7] = pos_bytes[3];
+		
+		calcTrinamicChecksum(pC_->outString_);
 	}
 	
 	status = pC_->writeReadController();
@@ -256,16 +381,50 @@ asynStatus TrinamicAxis::move(double position, int relative, double minVelocity,
 asynStatus TrinamicAxis::moveVelocity(double minVelocity, double maxVelocity, double acceleration)
 {
 	asynStatus status;
-	// TODO: send accel and velocity
+	// send accel and velocity
+	status = sendAccelAndVelocity(acceleration, maxVelocity);
 	
+	int vel_steps_int = NINT(maxVelocity);
+	// TODO: need additional velocity conversion
+	// vel_int = ;
+	
+	// convert velocity to int and break up into 4 bytes (int is 32 bits)
+	char vel_bytes [4] = {
+		(char)((vel_int & 0xFF000000) >> 24),
+		(char)((vel_int & 0x00FF0000) >> 16),
+		(char)((vel_int & 0x0000FF00) >> 8),
+		(char)(vel_int & 0x000000FF),
+	}
+	
+	// move vel: <address> 01/02 00 (rotate right/left) <vel position (4)> <checksum> 
 	if (maxVelocity > 0.) {
-		//TODO	
-		sprintf(pC->outString_, "TODO", axisNo_);
+		pC_->outString_[0] = pC_->trinamicAddr;
+		pC_->outString_[1] = 0x01;
+		pC_->outString_[2] = 0x00;
+		pC_->outString_[3] = (char)axisNo_;
+
+		// set 4 bytes of desired value
+		pC_->outString_[4] = vel_bytes[0];
+		pC_->outString_[5] = vel_bytes[1];
+		pC_->outString_[6] = vel_bytes[2];
+		pC_->outString_[7] = vel_bytes[3];
+		
+		calcTrinamicChecksum(pC_->outString_);
 	}
 	else
 	{
-		//TODO
-		sprintf(pC->outString_, "TODO", axisNo_);
+		pC_->outString_[0] = pC_->trinamicAddr;
+		pC_->outString_[1] = 0x02;
+		pC_->outString_[2] = 0x00;
+		pC_->outString_[3] = (char)axisNo_;
+
+		// set 4 bytes of desired value
+		pC_->outString_[4] = vel_bytes[0];
+		pC_->outString_[5] = vel_bytes[1];
+		pC_->outString_[6] = vel_bytes[2];
+		pC_->outString_[7] = vel_bytes[3];
+		
+		calcTrinamicChecksum(pC_->outString_);
 	}
 	status = pC_->writeReadController();
 	return status;
@@ -274,19 +433,44 @@ asynStatus TrinamicAxis::moveVelocity(double minVelocity, double maxVelocity, do
 asynStatus TranamicAxis::stop(double acceleration)
 {
 	asynStatus status;
+	// stop: <address> 03 00 <motor #> 00 00 00 00 <checksum>
+	pC_->outString_[0] = pC_->trinamicAddr;
+	pC_->outString_[1] = 0x03;
+	pC_->outString_[2] = 0x00;
+	pC_->outString_[3] = (char)axisNo_;
 
-	sprintf(pC_->outString_, "TODO", axisNo_);
+	// set 4 bytes of desired value
+	pC_->outString_[4] = 0x00;
+	pC_->outString_[5] = 0x00;
+	pC_->outString_[6] = 0x00;
+	pC_->outString_[7] = 0x00;
+		
+	calcTrinamicChecksum(pC_->outString_);
 
 	status = pC_->writeReadController();
 	return status;
 }
 
-asynStatus Trinamic::setPosition(double position)
+asynStatus TrinamicAxis::setPosition(double position)
 {
 	asynStatus status;
 
-	//TODO: NINT?
-	sprintf(pC_->outString_, "TODO", axisNo_, position);
+	//TODO: NINT + calc position
+	
+	// set pos: <address> 05 01 <motor #> <position (4)> <checksum> 
+	pC_->outString_[0] = pC_->trinamicAddr;
+	pC_->outString_[1] = 0x05;
+	pC_->outString_[2] = 0x01;
+	pC_->outString_[3] = (char)axisNo_;
+
+	// set 4 bytes of desired value
+	// TODO: set right value
+	pC_->outString_[4] = 0x00;
+	pC_->outString_[5] = 0x00;
+	pC_->outString_[6] = 0x00;
+	pC_->outString_[7] = 0x00;
+		
+	calcTrinamicChecksum(pC_->outString_);
 
 	status = pC_->writeReadController();
 	return status;
@@ -297,7 +481,8 @@ asynStatus Trinamic::setPosition(double position)
   * and the drive power-on status.
   * It calls setIntegerParam() and setDoubleParam() for each item that it polls,
   * and then calls callParamCallbacks() at the end.
-  * \param[out] moving A flag that is set indicating that the axis is moving (true) or done (false). */
+  * \param[out] moving A flag that is set indicating that the axis is moving (true) or done (false). 
+*/
 
 asynStatus TrinamicAxis::poll(bool *moving)
 {
@@ -307,17 +492,32 @@ asynStatus TrinamicAxis::poll(bool *moving)
 	double position;
 	asynStatus comStatus;
 
-	// TODO: what is comstatus and why skip?
-
 	// Read the current motor position
-	sprintf(pC_->outString_, "TODO", axisNo_);
+	// get pos: <address> 06 01 <motor #> 00 00 00 00 <checksum> 
+	pC_->outString_[0] = pC_->trinamicAddr;
+	pC_->outString_[1] = 0x06;
+	pC_->outString_[2] = 0x01;
+	pC_->outString_[3] = (char)axisNo_;
+
+	// set 4 bytes of desired value
+	// TODO: set right value
+	pC_->outString_[4] = 0x00;
+	pC_->outString_[5] = 0x00;
+	pC_->outString_[6] = 0x00;
+	pC_->outString_[7] = 0x00;
+		
+	calcTrinamicChecksum(pC_->outString_);
+	
 	comStatus = pC_->writeReadController();
 	if (comStatus) goto skip;
 	// the response is in the form TODO
+	// parse response and set position (calculation? TODO: make conversion functions?)
 	position = atof(&pC_->inString_[5]);
 	setDoubleParam(pC_->motorPosition_, position);
 
 	// Read the moving status of this motor
+	// get moving status (position reached flag, 0 if moving): 
+	// <address> 06 08 <motor #> 00 00 00 00 <checksum>
 	sprintf(pC_->outString_, "TODO", axisNo_);
 	comStatus = pC_->writeReadController();
 	if (comStatus) goto skip;
@@ -327,6 +527,7 @@ asynStatus TrinamicAxis::poll(bool *moving)
 	*moving = done ? false:true;	
 
 	// Read the limit status
+	// get lim status: <address> 06 0A/0B (right/left) <motor #> 00 00 00 00 <checksum>
 	sprintf(pC_->outString_, "TODO", axisNo_);
 	comStatus = pC_->writeReadController();
 	if (comStatus) goto skip;
