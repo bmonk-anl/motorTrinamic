@@ -50,6 +50,8 @@ class epicsShareClass TrinamicController : public asynMotorController
                                                     size_t maxChars, size_t *nread, double timeout)
 
 		char trinamicAddr = TRINAMIC_ADDR;
+		unsigned int pulse_div = PULSE_DIV;
+		unsigned int ramp_div = RAMP_DIV;
 
 	friend class TrinamicAxis;
 }
