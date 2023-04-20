@@ -29,6 +29,14 @@ Command format (bytes):
 5. value - msb first (4)
 6. checksum (1)
 
+Reply format:
+1. (1) Reply address
+2. (1) Module address
+3. (1) Status (100 = no error)
+4. (1) Command number
+5. (4) Value (MSB first)
+6. (1) checksum
+
 // TODO: add multiple address suppport
 
 Command List:
@@ -352,7 +360,7 @@ asynStatus TrinamicAxis::sendAccelAndVelocity(double acceleration, double veloci
 }
 
 asynStatus TrinamicAxis::move(double position, int relative, double minVelocity, double maxVelocity,
-		double acceleration))
+		double acceleration)
 {
 	asynStatus status;
 
@@ -391,6 +399,30 @@ asynStatus TrinamicAxis::move(double position, int relative, double minVelocity,
 	status = pC_->writeReadController();
 	return status;
 
+}
+
+asynStatus TrinamicAxis::home(double minVelocity, double maxVelocity, 
+		double acceleration, int forwards)
+{
+	asynStatus status;
+	// home (aka start reference search RFS): <address> 0D 00 <motor #> <0 (4)> <checksum>
+
+  	status = sendAccelAndVelocity(acceleration, maxVelocity);
+
+	pC_->outString_[0] = pC_->trinamicAddr;
+	pC_->outString_[1] = 0x0D;
+	pC_->outString_[2] = 0x00;
+	pC_->outString_[3] = (char)axisNo_;
+
+	pC_->outString_[4] = 0x00;
+	pC_->outString_[5] = 0x00;
+	pC_->outString_[6] = 0x00;
+	pC_->outString_[7] = 0x00;
+		
+	calcTrinamicChecksum(pC_->outString_);
+
+  	status = pC_->writeReadController();
+  	return status;
 }
 
 asynStatus TrinamicAxis::moveVelocity(double minVelocity, double maxVelocity, double acceleration)
@@ -496,8 +528,7 @@ asynStatus TrinamicAxis::poll(bool *moving)
 	pC_->outString_[2] = 0x01;
 	pC_->outString_[3] = (char)axisNo_;
 
-	// set 4 bytes of desired value
-	// TODO: set right value
+	// set 4 bytes of desired value (all 0's for read)
 	pC_->outString_[4] = 0x00;
 	pC_->outString_[5] = 0x00;
 	pC_->outString_[6] = 0x00;
@@ -507,24 +538,77 @@ asynStatus TrinamicAxis::poll(bool *moving)
 	
 	comStatus = pC_->writeReadController();
 	if (comStatus) goto skip;
-	// the response is in the form TODO
-	// parse response and set position (calculation? TODO: make conversion functions?)
-	position = atof(&pC_->inString_[5]);
+	// value of a read is in bytes 4-7	
+	// response placed in pC_->inString_
+	// convert 8 bytes to double and set parameter
+	position = (double) (
+		((pC_->inString_[4] << 24) & 0xFF000000) | 
+		((pC_->inString_[5] << 16) & 0x00FF0000) | 
+		((pC_->inString_[6] << 8) & 0x0000FF00) | 
+		((pC_->inString_[7] << 0) & 0x000000FF) );
+
 	setDoubleParam(pC_->motorPosition_, position);
 
 	// Read the moving status of this motor
 	// get moving status (position reached flag, 0 if moving): 
 	// <address> 06 08 <motor #> 00 00 00 00 <checksum>
-	sprintf(pC_->outString_, "TODO", axisNo_);
+	pC_->outString_[0] = pC_->trinamicAddr;
+	pC_->outString_[1] = 0x06;
+	pC_->outString_[2] = 0x08;
+	pC_->outString_[3] = (char)axisNo_;
+
+	// set 4 bytes of desired value (all 0's for read)
+	pC_->outString_[4] = 0x00;
+	pC_->outString_[5] = 0x00;
+	pC_->outString_[6] = 0x00;
+	pC_->outString_[7] = 0x00;
+		
+	calcTrinamicChecksum(pC_->outString_);
+	
 	comStatus = pC_->writeReadController();
 	if (comStatus) goto skip;
-	// the response is in the form TODO
-	done = (pC_->inString_[5] == '0') ? 1:0;
+	// only need LSB for motor flag
+	// 1 means position reached
+	done = (int) (pC_->inString_[7] & 0x000000FF);
+
 	setIntegerParam(pC_->motorStatusDone_, done);
-	*moving = done ? false:true;	
+	*moving = done ? false : true;	
 
 	// Read the limit status
+	// TODO: how to set individual axis limits??
 	// get lim status: <address> 06 0A/0B (right/left) <motor #> 00 00 00 00 <checksum>
+	pC_->outString_[0] = pC_->trinamicAddr;
+	pC_->outString_[1] = 0x06;
+	pC_->outString_[2] = 0x0A;
+	pC_->outString_[3] = (char)axisNo_;
+
+	// set 4 bytes of desired value (all 0's for read)
+	pC_->outString_[4] = 0x00;
+	pC_->outString_[5] = 0x00;
+	pC_->outString_[6] = 0x00;
+	pC_->outString_[7] = 0x00;
+		
+	calcTrinamicChecksum(pC_->outString_);
+	
+	comStatus = pC_->writeReadController();
+	if (comStatus) goto skip;
+	// only need LSB for motor flag
+	// 0 means switch is activated
+	done = (int) (pC_->inString_[7] & 0x000000FF);
+
+	limit = (pC_->inString_[5] == '1') ? 1:0;
+	setIntegerParam(pC_->motorStatusHighLimit_, limit);
+
+
+
+
+
+
+
+
+
+
+
 	sprintf(pC_->outString_, "TODO", axisNo_);
 	comStatus = pC_->writeReadController();
 	if (comStatus) goto skip;
