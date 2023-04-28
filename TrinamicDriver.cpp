@@ -137,7 +137,7 @@ unsigned int accel_steps_to_int (double acceleration, unsigned int pulse_div,
 
 TrinamicController::TrinamicController(const char* portName, const char* TrinamicPortName,
 		int numAxes, double movingPollPeriod, double idlePollPeriod)
-	: asynMotorController(portName, numAxes, NUM_TRINAMIC_PARAMS, 
+		: asynMotorController(portName, numAxes, NUM_TRINAMIC_PARAMS, 
                          0, // No additional callback interfaces beyond those in base class
                          ASYN_CANBLOCK | ASYN_MULTIDEVICE, 
                          1, // autoconnect
@@ -181,11 +181,11 @@ extern "C" int CreatTrinamicController(const* char portName, const char* Trinami
 
 void TrinamicController::report(FILE *fp, int level)
 {
-  fprintf(fp, "Trinamic motor driver %s, numAxes=%d, moving poll period=%f, idle poll period=%f\n",
-    this->portName, numAxes_, movingPollPeriod_, idlePollPeriod_);
-
-  // Call the base class method
-  asynMotorController::report(fp, level);
+	fprintf(fp, "Trinamic motor driver %s, numAxes=%d, moving poll period=%f, idle poll period=%f\n",
+	  this->portName, numAxes_, movingPollPeriod_, idlePollPeriod_);
+	
+	// Call the base class method
+	asynMotorController::report(fp, level);
 }
 
 /** Returns a pointer to an TrinamicAxis object.
@@ -206,28 +206,28 @@ TrinamicAxis* TrinamicController::getAxis(int axisNo)
 
 asynStatus TrinamicMotorController::writeReadController()
 {
-  size_t nread;
-  return writeReadController(outString_, inString_, sizeof(inString_), 
-		  &nread, DEFAULT_CONTROLLER_TIMEOUT);
+	size_t nread;
+	return writeReadController(outString_, inString_, sizeof(inString_), 
+			&nread, DEFAULT_CONTROLLER_TIMEOUT);
 }
 
 asynStatus TrinamicMotorController::writeReadController(const char *output, char *input, 
                                                     size_t maxChars, size_t *nread, double timeout)
 {
-  size_t nwrite;
-  asynStatus status;
-  int eomReason;
-  // const char *functionName="writeReadController";
-  
-  // status = pasynOctetSyncIO->writeRead(pasynUserController_, output,
-  //                                     strlen(output), input, maxChars, timeout,
-  //                                     &nwrite, nread, &eomReason);
-  
-  status = pasynOctetSyncIO->writeRead(pasynUserController_, output,
-                                       TRINAMIC_CMD_SIZE, input, maxChars, timeout,
-                                       &nwrite, nread, &eomReason);
-                        
-  return status;
+	size_t nwrite;
+	asynStatus status;
+	int eomReason;
+	// const char *functionName="writeReadController";
+	
+	// status = pasynOctetSyncIO->writeRead(pasynUserController_, output,
+	//                                     strlen(output), input, maxChars, timeout,
+	//                                     &nwrite, nread, &eomReason);
+	
+	status = pasynOctetSyncIO->writeRead(pasynUserController_, output,
+	                                     TRINAMIC_CMD_SIZE, input, maxChars, timeout,
+	                                     &nwrite, nread, &eomReason);
+	                      
+	return status;
 }
 
 
@@ -517,7 +517,8 @@ asynStatus TrinamicAxis::poll(bool *moving)
 {
 	int done;
 	int driveOn;
-	int limit;
+	int rightLimit;
+	int leftLimit;
 	double position;
 	asynStatus comStatus;
 
@@ -575,8 +576,8 @@ asynStatus TrinamicAxis::poll(bool *moving)
 	*moving = done ? false : true;	
 
 	// Read the limit status
-	// TODO: how to set individual axis limits??
 	// get lim status: <address> 06 0A/0B (right/left) <motor #> 00 00 00 00 <checksum>
+	// get right limit
 	pC_->outString_[0] = pC_->trinamicAddr;
 	pC_->outString_[1] = 0x06;
 	pC_->outString_[2] = 0x0A;
@@ -592,42 +593,29 @@ asynStatus TrinamicAxis::poll(bool *moving)
 	
 	comStatus = pC_->writeReadController();
 	if (comStatus) goto skip;
-	// only need LSB for motor flag
-	// 0 means switch is activated
-	done = (int) (pC_->inString_[7] & 0x000000FF);
+	// 1 means switch is activated
+	rightLimit = (int) (pC_->inString_[7] & 0x000000FF);
+	setIntegerParam(pC_->motorStatusHighLimit_, rightLimit);
 
-	limit = (pC_->inString_[5] == '1') ? 1:0;
-	setIntegerParam(pC_->motorStatusHighLimit_, limit);
+	// get left limit
+	pC_->outString_[0] = pC_->trinamicAddr;
+	pC_->outString_[1] = 0x06;
+	pC_->outString_[2] = 0x0B;
+	pC_->outString_[3] = (char)axisNo_;
 
-
-
-
-
-
-
-
-
-
-
-	sprintf(pC_->outString_, "TODO", axisNo_);
+	// set 4 bytes of desired value (all 0's for read)
+	pC_->outString_[4] = 0x00;
+	pC_->outString_[5] = 0x00;
+	pC_->outString_[6] = 0x00;
+	pC_->outString_[7] = 0x00;
+		
+	calcTrinamicChecksum(pC_->outString_);
+	
 	comStatus = pC_->writeReadController();
 	if (comStatus) goto skip;
-	// the response is in the form TODO
-	limit = (pC_->inString_[5] == '1') ? 1:0;
-	setIntegerParam(pC_->motorStatusHighLimit_, limit);
-	limit = (pC_->inString_[6] == '1') ? 1:0;
-	setIntegerParam(pC_->motorStatusLowLimit_, limit);
-	limit = (pC_->inString_[7] == '1') ? 1:0;
-	setIntegerParam(pC_->motorStatusAtHome_, limit);
-
-	// Read the drive power on status (?)
-	sprintf(pC_->outString_, "TODO", axisNo_);
-	comStatus = pC_->writeReadController();
-	if (comStatus) goto skip;
-	// the response is in the form TODO
-	driveOn = (pC_->inString_[5] == '1') ? 1:0;
-	setIntegerParam(pC_->motorStatusPowerOn_, driveOn);
-	setIntegerParam(pC_->motorStatusProblem_, 0);
+	// 1 means switch is activated
+	leftLimit = (int) (pC_->inString_[7] & 0x000000FF);
+	setIntegerParam(pC_->motorStatusHighLimit_, rightLimit);
 
 	skip:
 	setIntegerParam(pC_->motorStatusProblem_, comStatus ? 1:0);
