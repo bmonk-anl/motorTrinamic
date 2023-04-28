@@ -8,7 +8,6 @@ include $(TOP)/configure/CONFIG
 #==================================================
 # Build an IOC support library
 
-#LIBRARY_IOC += AMCI
 LIBRARY_IOC = Trinamic 
 
 # motorRecord.h will be created from motorRecord.dbd
