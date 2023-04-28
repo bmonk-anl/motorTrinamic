@@ -45,9 +45,13 @@ class epicsShareClass TrinamicController : public asynMotorController
 
 		// need to rewrite methods since raw binary is used in commands and this
 		// method uses strlen (will be wrong if data contains byte of 0)
-		asynStatus writeReadController()
+		asynStatus writeReadController();
 		asynStatus writeReadController(const char *output, char *input, 
-                                                    size_t maxChars, size_t *nread, double timeout)
+                                                    size_t maxChars, size_t *nread, double timeout);
+		void calcTrinamicChecksum(char* command);
+		unsigned int vel_steps_to_int (double velocity, unsigned int pulse_div);
+		unsigned int accel_steps_to_int (double acceleration, unsigned int pulse_div, 
+			unsigned int ramp_div);
 
 		char trinamicAddr = TRINAMIC_ADDR;
 		unsigned int pulse_div = PULSE_DIV;

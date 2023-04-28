@@ -78,7 +78,7 @@ accel: internal units (int)
 #define NINT(f) (int)((f)>0 ? (f)+0.5 : (f)-0.5)
 
 // set checksum directly in function or return number?
-void calcTrinamicChecksum(char* command)
+void TrinamicController::calcTrinamicChecksum(char* command)
 {
 	char checksum;
 	int i;
@@ -92,7 +92,7 @@ void calcTrinamicChecksum(char* command)
 }
 
 // convert velocity double (usteps/s) to int used in trinamic controller (1...2047)
-unsigned int vel_steps_to_int (double velocity, unsigned int pulse_div)
+unsigned int TrinamicController::vel_steps_to_int (double velocity, unsigned int pulse_div)
 {
 	double v_double;
 	unsigned int v_int;
@@ -106,7 +106,7 @@ unsigned int vel_steps_to_int (double velocity, unsigned int pulse_div)
 }
 
 // convert accel double (usteps/s^2) to int used in trinamic controller (1...2047)
-unsigned int accel_steps_to_int (double acceleration, unsigned int pulse_div, 
+unsigned int TrinamicController::accel_steps_to_int (double acceleration, unsigned int pulse_div, 
 		unsigned int ramp_div)
 {
 	double a_double;
@@ -119,13 +119,6 @@ unsigned int accel_steps_to_int (double acceleration, unsigned int pulse_div,
 
 	return a_int;
 }
-
-// int log2_fast(double d) 
-// {
-// 	int result;
-//     frexp(d, &result);
-//     return result-1;
-// }
 
 /** Creates a new TrinamicController object.
   * \param[in] portName          The name of the asyn port that will be created for this driver
