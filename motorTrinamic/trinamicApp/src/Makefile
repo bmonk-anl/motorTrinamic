@@ -15,7 +15,6 @@ DBD += TrinamicSupport.dbd
 
 # The following are compiled and added to the Support library
 SRCS += TrinamicDriver.cpp 
-SRCS += TrinamicDriver.h 
 
 Trinamic_LIBS += motor asyn
 Trinamic_LIBS += $(EPICS_BASE_IOC_LIBS)
