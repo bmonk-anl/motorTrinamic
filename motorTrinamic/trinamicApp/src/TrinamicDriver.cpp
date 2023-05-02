@@ -277,8 +277,8 @@ asynStatus TrinamicAxis::sendAccelAndVelocity(double acceleration, double veloci
 	unsigned int vel_int, accel_int;
 	
 	// convert velocity and accel from microsteps to controller units
-	vel_int = vel_steps_to_int(velocity, pC_->pulse_div);	
-	accel_int = vel_steps_to_int(acceleration, pC_->pulse_div, pC_->ramp_div);	
+	vel_int = pC_->vel_steps_to_int(velocity, pC_->pulse_div);	
+	accel_int = pC_->accel_steps_to_int(acceleration, pC_->pulse_div, pC_->ramp_div);	
 
 	// set pulse divisor
 	// format: <address> 05 9A <motor #> <value (4)> <checksum>
@@ -294,7 +294,7 @@ asynStatus TrinamicAxis::sendAccelAndVelocity(double acceleration, double veloci
 	pC_->outString_[7] = (char)(pC_->pulse_div & 0x000000FF);		
 
 	// set checksum
-	calcTrinamicChecksum(pC_->outString_);
+	pC_->calcTrinamicChecksum(pC_->outString_);
 
 	status = pC_->writeReadController();
 	
@@ -311,7 +311,7 @@ asynStatus TrinamicAxis::sendAccelAndVelocity(double acceleration, double veloci
 	pC_->outString_[6] = (char)((pC_->ramp_div & 0x0000FF00) >> 8);
 	pC_->outString_[7] = (char)(pC_->ramp_div & 0x000000FF);		
 	
-	calcTrinamicChecksum(pC_->outString_);
+	pC_->calcTrinamicChecksum(pC_->outString_);
 
 	status = pC_->writeReadController();
 	
@@ -329,7 +329,7 @@ asynStatus TrinamicAxis::sendAccelAndVelocity(double acceleration, double veloci
 	pC_->outString_[6] = (char)((v_int & 0x0000FF00) >> 8);
 	pC_->outString_[7] = (char)(v_int & 0x000000FF);		
 	
-	calcTrinamicChecksum(pC_->outString_);
+	pC_->calcTrinamicChecksum(pC_->outString_);
 
 	status = pC_->writeReadController();
 	
@@ -345,7 +345,7 @@ asynStatus TrinamicAxis::sendAccelAndVelocity(double acceleration, double veloci
 	pC_->outString_[6] = (char)((a_int & 0x0000FF00) >> 8);
 	pC_->outString_[7] = (char)(a_int & 0x000000FF);		
 	
-	calcTrinamicChecksum(pC_->outString_);
+	pC_->calcTrinamicChecksum(pC_->outString_);
 
 	status = pC_->writeReadController();
 
@@ -387,7 +387,7 @@ asynStatus TrinamicAxis::move(double position, int relative, double minVelocity,
 	pC_->outString_[6] = (char)((pos_int & 0x0000FF00) >> 8);
 	pC_->outString_[7] = (char)(pos_int & 0x000000FF);		
 		
-	calcTrinamicChecksum(pC_->outString_);
+	pC_->calcTrinamicChecksum(pC_->outString_);
 	
 	status = pC_->writeReadController();
 	return status;
@@ -412,7 +412,7 @@ asynStatus TrinamicAxis::home(double minVelocity, double maxVelocity,
 	pC_->outString_[6] = 0x00;
 	pC_->outString_[7] = 0x00;
 		
-	calcTrinamicChecksum(pC_->outString_);
+	pC_->calcTrinamicChecksum(pC_->outString_);
 
   	status = pC_->writeReadController();
   	return status;
@@ -424,7 +424,7 @@ asynStatus TrinamicAxis::moveVelocity(double minVelocity, double maxVelocity, do
 	// send accel and velocity
 	status = sendAccelAndVelocity(acceleration, maxVelocity);
 
-	unsigned int vel_int = vel_steps_to_int(maxVelocity, pC_->pulse_div);	
+	unsigned int vel_int = pC_->vel_steps_to_int(maxVelocity, pC_->pulse_div);	
 	
 	// move vel: <address> 01/02 00 (rotate right/left) <vel position (4)> <checksum> 
 	if (maxVelocity > 0.) {
@@ -447,7 +447,7 @@ asynStatus TrinamicAxis::moveVelocity(double minVelocity, double maxVelocity, do
 	pC_->outString_[6] = (char)((vel_int & 0x0000FF00) >> 8);
 	pC_->outString_[7] = (char)(vel_int & 0x000000FF);		
 	
-	calcTrinamicChecksum(pC_->outString_);
+	pC_->calcTrinamicChecksum(pC_->outString_);
 	status = pC_->writeReadController();
 	return status;
 }
@@ -467,7 +467,7 @@ asynStatus TranamicAxis::stop(double acceleration)
 	pC_->outString_[6] = 0x00;
 	pC_->outString_[7] = 0x00;
 		
-	calcTrinamicChecksum(pC_->outString_);
+	pC_->calcTrinamicChecksum(pC_->outString_);
 
 	status = pC_->writeReadController();
 	return status;
@@ -492,7 +492,7 @@ asynStatus TrinamicAxis::setPosition(double position)
 	pC_->outString_[6] = (char)((pos_int & 0x0000FF00) >> 8);
 	pC_->outString_[7] = (char)(pos_int & 0x000000FF);		
 		
-	calcTrinamicChecksum(pC_->outString_);
+	pC_->calcTrinamicChecksum(pC_->outString_);
 
 	status = pC_->writeReadController();
 	return status;
@@ -528,7 +528,7 @@ asynStatus TrinamicAxis::poll(bool *moving)
 	pC_->outString_[6] = 0x00;
 	pC_->outString_[7] = 0x00;
 		
-	calcTrinamicChecksum(pC_->outString_);
+	pC_->calcTrinamicChecksum(pC_->outString_);
 	
 	comStatus = pC_->writeReadController();
 	if (comStatus) goto skip;
@@ -557,7 +557,7 @@ asynStatus TrinamicAxis::poll(bool *moving)
 	pC_->outString_[6] = 0x00;
 	pC_->outString_[7] = 0x00;
 		
-	calcTrinamicChecksum(pC_->outString_);
+	pC_->calcTrinamicChecksum(pC_->outString_);
 	
 	comStatus = pC_->writeReadController();
 	if (comStatus) goto skip;
@@ -582,7 +582,7 @@ asynStatus TrinamicAxis::poll(bool *moving)
 	pC_->outString_[6] = 0x00;
 	pC_->outString_[7] = 0x00;
 		
-	calcTrinamicChecksum(pC_->outString_);
+	pC_->calcTrinamicChecksum(pC_->outString_);
 	
 	comStatus = pC_->writeReadController();
 	if (comStatus) goto skip;
@@ -602,7 +602,7 @@ asynStatus TrinamicAxis::poll(bool *moving)
 	pC_->outString_[6] = 0x00;
 	pC_->outString_[7] = 0x00;
 		
-	calcTrinamicChecksum(pC_->outString_);
+	pC_->calcTrinamicChecksum(pC_->outString_);
 	
 	comStatus = pC_->writeReadController();
 	if (comStatus) goto skip;
