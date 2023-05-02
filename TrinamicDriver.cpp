@@ -72,6 +72,7 @@ accel: internal units (int)
 
 #include <asynOctetSyncIO.h>
 
+#include <iocsh.h>
 #include <epicsExport.h>
 #include <epicsThread.h>
 
@@ -80,7 +81,7 @@ accel: internal units (int)
 // set checksum directly in function or return number?
 void TrinamicController::calcTrinamicChecksum(char* command)
 {
-	char checksum;
+	char checksum=0;
 	int i;
 
 	for(i=0; i<=8; i++) {
@@ -132,6 +133,7 @@ TrinamicController::TrinamicController(const char* portName, const char* Trinami
 		int numAxes, double movingPollPeriod, double idlePollPeriod)
 		: asynMotorController(portName, numAxes, NUM_TRINAMIC_PARAMS, 
                          0, // No additional callback interfaces beyond those in base class
+                         0,
                          ASYN_CANBLOCK | ASYN_MULTIDEVICE, 
                          1, // autoconnect
                          0, 0)  // Default priority and stack size
@@ -142,12 +144,12 @@ TrinamicController::TrinamicController(const char* portName, const char* Trinami
 	static const char* functionName = "TrinamicController::TrinamicController";
 
 	// Connect to Trinamic Controller
-	status = pasynOctetIO->connect(TrinamicPortName, 0, &pasynUserController_, NULL);
+	status = pasynOctetSyncIO->connect(TrinamicPortName, 0, &pasynUserController_, NULL);
 	if(status) {
 		asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, 
 				"%s: cannot connect to Trinamic controller\n", functionName);
 	}
-	for(axis=0; axis<numAxis; axis++)
+	for(axis=0; axis<numAxes; axis++)
 	{
 		pAxis = new TrinamicAxis(this, axis);	
 	}
@@ -164,11 +166,13 @@ TrinamicController::TrinamicController(const char* portName, const char* Trinami
   * \param[in] idlePollPeriod    The time in ms between polls when no axis is moving 
   */
 
-extern "C" int CreatTrinamicController(const* char portName, const char* TrinamicPortName, 
-		int numAxes, int movingPollPeriod, idlePollPeriod)
+extern "C" int TrinamicCreateController(const char* portName, const char* TrinamicPortName, 
+		int numAxes, int movingPollPeriod, int idlePollPeriod)
 {
 	TrinamicController* pTrinamicController = new TrinamicController(portName, TrinamicPortName,
-			numAxes, movingPollPeriod/1000., idlePollPeriod/1000.,);
+			numAxes, movingPollPeriod/1000., idlePollPeriod/1000.);
+    pTrinamicController = NULL;
+    return(asynSuccess);
 }
 
 
@@ -197,14 +201,14 @@ TrinamicAxis* TrinamicController::getAxis(int axisNo)
 	return static_cast<TrinamicAxis*>(asynMotorController::getAxis(axisNo));
 }
 
-asynStatus TrinamicMotorController::writeReadController()
+asynStatus TrinamicController::writeReadController()
 {
 	size_t nread;
 	return writeReadController(outString_, inString_, sizeof(inString_), 
 			&nread, DEFAULT_CONTROLLER_TIMEOUT);
 }
 
-asynStatus TrinamicMotorController::writeReadController(const char *output, char *input, 
+asynStatus TrinamicController::writeReadController(const char *output, char *input, 
                                                     size_t maxChars, size_t *nread, double timeout)
 {
 	size_t nwrite;
@@ -324,10 +328,10 @@ asynStatus TrinamicAxis::sendAccelAndVelocity(double acceleration, double veloci
 	pC_->outString_[3] = (char)axisNo_;
 
 	// set 4 bytes of desired value
-	pC_->outString_[4] = (char)((v_int & 0xFF000000) >> 24);
-	pC_->outString_[5] = (char)((v_int & 0x00FF0000) >> 16);
-	pC_->outString_[6] = (char)((v_int & 0x0000FF00) >> 8);
-	pC_->outString_[7] = (char)(v_int & 0x000000FF);		
+	pC_->outString_[4] = (char)((vel_int & 0xFF000000) >> 24);
+	pC_->outString_[5] = (char)((vel_int & 0x00FF0000) >> 16);
+	pC_->outString_[6] = (char)((vel_int & 0x0000FF00) >> 8);
+	pC_->outString_[7] = (char)(vel_int & 0x000000FF);		
 	
 	pC_->calcTrinamicChecksum(pC_->outString_);
 
@@ -340,10 +344,10 @@ asynStatus TrinamicAxis::sendAccelAndVelocity(double acceleration, double veloci
 	pC_->outString_[3] = (char)axisNo_;
 
 	// set 4 bytes of desired value
-	pC_->outString_[4] = (char)((a_int & 0xFF000000) >> 24);
-	pC_->outString_[5] = (char)((a_int & 0x00FF0000) >> 16);
-	pC_->outString_[6] = (char)((a_int & 0x0000FF00) >> 8);
-	pC_->outString_[7] = (char)(a_int & 0x000000FF);		
+	pC_->outString_[4] = (char)((accel_int & 0xFF000000) >> 24);
+	pC_->outString_[5] = (char)((accel_int & 0x00FF0000) >> 16);
+	pC_->outString_[6] = (char)((accel_int & 0x0000FF00) >> 8);
+	pC_->outString_[7] = (char)(accel_int & 0x000000FF);		
 	
 	pC_->calcTrinamicChecksum(pC_->outString_);
 
@@ -452,7 +456,7 @@ asynStatus TrinamicAxis::moveVelocity(double minVelocity, double maxVelocity, do
 	return status;
 }
 
-asynStatus TranamicAxis::stop(double acceleration)
+asynStatus TrinamicAxis::stop(double acceleration)
 {
 	asynStatus status;
 	// stop: <address> 03 00 <motor #> 00 00 00 00 <checksum>
@@ -509,7 +513,7 @@ asynStatus TrinamicAxis::setPosition(double position)
 asynStatus TrinamicAxis::poll(bool *moving)
 {
 	int done;
-	int driveOn;
+	// int driveOn;
 	int rightLimit;
 	int leftLimit;
 	double position;
@@ -608,7 +612,7 @@ asynStatus TrinamicAxis::poll(bool *moving)
 	if (comStatus) goto skip;
 	// 1 means switch is activated
 	leftLimit = (int) (pC_->inString_[7] & 0x000000FF);
-	setIntegerParam(pC_->motorStatusHighLimit_, rightLimit);
+	setIntegerParam(pC_->motorStatusHighLimit_, leftLimit);
 
 	skip:
 	setIntegerParam(pC_->motorStatusProblem_, comStatus ? 1:0);
@@ -630,14 +634,14 @@ static const iocshArg * const TrinamicCreateControllerArgs[] = {&TrinamicCreateC
 static const iocshFuncDef TrinamicCreateControllerDef = {"TrinamicCreateController", 5, 
 	TrinamicCreateControllerArgs};
 
-static void TrinamicCreateContollerCallFunc(const iocshArgBuf *args)
+static void TrinamicCreateControllerCallFunc(const iocshArgBuf *args)
 {
 	TrinamicCreateController(args[0].sval, args[1].sval, args[2].ival, args[3].ival, args[4].ival);
 }
 
 static void TrinamicRegister(void)
 {
-	iocshRegister(&TrinamicCreateControllerDef, TrinamicCreateContollerCallFunc);
+	iocshRegister(&TrinamicCreateControllerDef, TrinamicCreateControllerCallFunc);
 }
 
 extern "C" {

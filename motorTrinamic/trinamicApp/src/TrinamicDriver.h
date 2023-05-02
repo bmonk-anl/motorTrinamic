@@ -12,16 +12,16 @@
 #define RAMP_DIV 7
 
 
-class epicsShareClass TrnamicAxis : public asynMotorAxis
+class epicsShareClass TrinamicAxis : public asynMotorAxis
 {
 	public:
 		/* These are the methods we override from the base class */
-		TranamicAxis(class TrinamicController* pC, int axis);
+		TrinamicAxis(class TrinamicController* pC, int axis);
 		void report(FILE* fp, int level);
 		asynStatus move(double position, int relative, double min_velocity, double max_velocity, 
 				double acceleration);
 		asynStatus moveVelocity(double min_velocity, double max_velocity, double acceleration);
-		//asynStatus home(double min_velocity, double max_velocity, double acceleration, int forwards);
+		asynStatus home(double min_velocity, double max_velocity, double acceleration, int forwards);
 		asynStatus stop(double acceleration);
 		asynStatus poll(bool* moving);
 		asynStatus setPosition(double position);
@@ -58,5 +58,5 @@ class epicsShareClass TrinamicController : public asynMotorController
 		unsigned int ramp_div = RAMP_DIV;
 
 	friend class TrinamicAxis;
-}
+};
 									
