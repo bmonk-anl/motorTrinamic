@@ -432,11 +432,13 @@ asynStatus TrinamicAxis::moveVelocity(double minVelocity, double maxVelocity, do
 {
 	asynStatus status;
 	// send accel and velocity
-	double absVelocity = (maxVelocity > 0.) ? maxVelocity : -1*maxVelocity;
+	// double absVelocity = (maxVelocity > 0.) ? maxVelocity : -1*maxVelocity;
 	
 	// status = sendAccelAndVelocity(acceleration, absVelocity);
 
-	int vel_int = pC_->vel_steps_to_int(absVelocity, pC_->pulse_div);	
+	int vel_int = pC_->vel_steps_to_int(maxVelocity, pC_->pulse_div);	
+    if (vel_int < 0) vel_int = (-1)*vel_int;
+    
 	
 	// // move vel: <address> 01/02 00 (rotate right/left) <vel position (4)> <checksum> 
 	// // maxVelocity can either be positive or negative, so only use rotate right command
@@ -445,7 +447,7 @@ asynStatus TrinamicAxis::moveVelocity(double minVelocity, double maxVelocity, do
 	// pC_->outString_[2] = 0x00;
 	// pC_->outString_[3] = (char)axisNo_;
 	
-	if (maxVelocity > 0.) {
+	if (maxVelocity >= 0) {
 		pC_->outString_[0] = pC_->trinamicAddr;
 		pC_->outString_[1] = 0x01;
 		pC_->outString_[2] = 0x00;
@@ -596,7 +598,7 @@ asynStatus TrinamicAxis::poll(bool *moving)
 	if (comStatus) goto skip;
 	
     // check if any byte is not 0
-    done = !(pC_->inString_[4] | pC_->inString_[5] | pC_->inString_[6] | pC_->inString_[7]);
+    done = !(pC_->inString_[4] || pC_->inString_[5] || pC_->inString_[6] || pC_->inString_[7]);
 
 	setIntegerParam(pC_->motorStatusDone_, done);
 	*moving = done ? false : true;	
