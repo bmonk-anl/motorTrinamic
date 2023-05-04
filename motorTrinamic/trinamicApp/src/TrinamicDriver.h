@@ -1,3 +1,7 @@
+// bug report:
+// setting position: need to stop before doing it, says moving after
+// use velocity instead of position reached flag
+
 #include "asynMotorController.h"
 #include "asynMotorAxis.h"
 
@@ -49,7 +53,7 @@ class epicsShareClass TrinamicController : public asynMotorController
 		asynStatus writeReadController(const char *output, char *input, 
                                                     size_t maxChars, size_t *nread, double timeout);
 		void calcTrinamicChecksum(char* command);
-		unsigned int vel_steps_to_int (double velocity, unsigned int pulse_div);
+		int vel_steps_to_int (double velocity, unsigned int pulse_div);
 		unsigned int accel_steps_to_int (double acceleration, unsigned int pulse_div, 
 			unsigned int ramp_div);
 
