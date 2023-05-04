@@ -84,7 +84,7 @@ void TrinamicController::calcTrinamicChecksum(char* command)
 	char checksum=0;
 	int i;
 
-	for(i=0; i<=8; i++) {
+	for(i=0; i<8; i++) {
 		checksum += command[i];	
 	}
 
@@ -204,7 +204,7 @@ TrinamicAxis* TrinamicController::getAxis(int axisNo)
 asynStatus TrinamicController::writeReadController()
 {
 	size_t nread;
-	return writeReadController(outString_, inString_, sizeof(inString_), 
+	return writeReadController(outString_, inString_, TRINAMIC_CMD_SIZE,
 			&nread, DEFAULT_CONTROLLER_TIMEOUT);
 }
 
