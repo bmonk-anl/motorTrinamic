@@ -159,6 +159,60 @@ TrinamicController::TrinamicController(const char* portName, const char* Trinami
 		pAxis = new TrinamicAxis(this, axis);	
 	}
 
+    // inital commands to send:
+    
+    // set run current (SAP):
+    // format: <address> 05 06 <motor #> <current (0-255)(4 bytes)> <checksum>
+	pC_->outString_[0] = pC_->trinamicAddr;
+	pC_->outString_[1] = 0x05;
+	pC_->outString_[2] = 0x06;
+	pC_->outString_[3] = (char)axisNo_;
+
+	// set 4 bytes of desired value (only need to set last byte, max is 255)
+	pC_->outString_[4] = 0; 
+	pC_->outString_[5] = 0; 
+	pC_->outString_[6] = 0; 
+	pC_->outString_[7] = (char)(pC_->run_current & 0x000000FF);		
+
+	pC_->calcTrinamicChecksum(pC_->outString_);
+
+	status = pC_->writeReadController();
+
+    // set standby current (SAP):
+    // format: <address> 05 07 <motor #> <current (0-255)(4 bytes)> <checksum>
+	pC_->outString_[0] = pC_->trinamicAddr;
+	pC_->outString_[1] = 0x05;
+	pC_->outString_[2] = 0x07;
+	pC_->outString_[3] = (char)axisNo_;
+
+	// set 4 bytes of desired value (only need to set last byte, max is 255)
+	pC_->outString_[4] = 0; 
+	pC_->outString_[5] = 0; 
+	pC_->outString_[6] = 0; 
+	pC_->outString_[7] = (char)(pC_->standby_current & 0x000000FF);		
+
+	pC_->calcTrinamicChecksum(pC_->outString_);
+
+	status = pC_->writeReadController();
+    
+    // set microstep resolution (SAP)
+    // format: <address> 05 8C <motor #> <current (0-8)(4 bytes)> <checksum>
+    // # of microsteps will be 2^ustep_res steps per full step
+	pC_->outString_[0] = pC_->trinamicAddr;
+	pC_->outString_[1] = 0x05;
+	pC_->outString_[2] = 0x8C;
+	pC_->outString_[3] = (char)axisNo_;
+
+	// set 4 bytes of desired value (only need to set last byte, max is 255)
+	pC_->outString_[4] = 0; 
+	pC_->outString_[5] = 0; 
+	pC_->outString_[6] = 0; 
+	pC_->outString_[7] = (char)(pC_->ustep_res & 0x000000FF);		
+
+	pC_->calcTrinamicChecksum(pC_->outString_);
+
+	status = pC_->writeReadController();
+
 	startPoller(movingPollPeriod, idlePollPeriod, 2);
 }
 
