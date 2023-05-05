@@ -580,35 +580,10 @@ asynStatus TrinamicAxis::poll(bool *moving)
 
 	setDoubleParam(pC_->motorPosition_, position);
 
-    // check if velocity != 0
-	pC_->outString_[0] = pC_->trinamicAddr;
-	pC_->outString_[1] = 0x06;
-	pC_->outString_[2] = 0x03;
-	pC_->outString_[3] = (char)axisNo_;
-
-	// set 4 bytes of desired value (all 0's for read)
-	pC_->outString_[4] = 0x00;
-	pC_->outString_[5] = 0x00;
-	pC_->outString_[6] = 0x00;
-	pC_->outString_[7] = 0x00;
-	
-    pC_->calcTrinamicChecksum(pC_->outString_);
-	
-	comStatus = pC_->writeReadController();
-	if (comStatus) goto skip;
-	
-    // check if any byte is not 0
-    done = !(pC_->inString_[4] || pC_->inString_[5] || pC_->inString_[6] || pC_->inString_[7]);
-
-	setIntegerParam(pC_->motorStatusDone_, done);
-	*moving = done ? false : true;	
-
-	// // Read the moving status of this motor
-	// // get moving status (position reached flag, 0 if moving): 
-	// // <address> 06 08 <motor #> 00 00 00 00 <checksum>
+    // // check if velocity != 0
 	// pC_->outString_[0] = pC_->trinamicAddr;
 	// pC_->outString_[1] = 0x06;
-	// pC_->outString_[2] = 0x08;
+	// pC_->outString_[2] = 0x03;
 	// pC_->outString_[3] = (char)axisNo_;
 
 	// // set 4 bytes of desired value (all 0's for read)
@@ -616,17 +591,52 @@ asynStatus TrinamicAxis::poll(bool *moving)
 	// pC_->outString_[5] = 0x00;
 	// pC_->outString_[6] = 0x00;
 	// pC_->outString_[7] = 0x00;
-		
-	// pC_->calcTrinamicChecksum(pC_->outString_);
+	// 
+    // pC_->calcTrinamicChecksum(pC_->outString_);
 	// 
 	// comStatus = pC_->writeReadController();
 	// if (comStatus) goto skip;
-	// // only need LSB for motor flag
-	// // 1 means position reached
-	// done = (int) (pC_->inString_[7] & 0x000000FF);
+	// 
+    // check if any byte is not 0
+    // // done = !(pC_->inString_[4] || pC_->inString_[5] || pC_->inString_[6] || pC_->inString_[7]);
+    // if ((pC_->inString_[4] != 0)||
+    //     (pC_->inString_[5] != 0)||
+    //     (pC_->inString_[6] != 0)||
+    //     (pC_->inString_[7] != 0))
+    // {
+    //     done=0;
+    // }
+    // else {
+    //     done=1;
+    // } 
 
 	// setIntegerParam(pC_->motorStatusDone_, done);
 	// *moving = done ? false : true;	
+
+	// Read the moving status of this motor
+	// get moving status (position reached flag, 0 if moving): 
+	// <address> 06 08 <motor #> 00 00 00 00 <checksum>
+	pC_->outString_[0] = pC_->trinamicAddr;
+	pC_->outString_[1] = 0x06;
+	pC_->outString_[2] = 0x08;
+	pC_->outString_[3] = (char)axisNo_;
+
+	// set 4 bytes of desired value (all 0's for read)
+	pC_->outString_[4] = 0x00;
+	pC_->outString_[5] = 0x00;
+	pC_->outString_[6] = 0x00;
+	pC_->outString_[7] = 0x00;
+	 
+	pC_->calcTrinamicChecksum(pC_->outString_);
+	
+	comStatus = pC_->writeReadController();
+	if (comStatus) goto skip;
+	// only need LSB for motor flag
+	// 1 means position reached
+	done = (int) (pC_->inString_[7] & 0x000000FF);
+
+	setIntegerParam(pC_->motorStatusDone_, done);
+	*moving = done ? false : true;	
 
 	// Read the limit status
 	// get lim status: <address> 06 0A/0B (right/left) <motor #> 00 00 00 00 <checksum>
