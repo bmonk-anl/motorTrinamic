@@ -12,8 +12,8 @@
 #define TRINAMIC_CMD_SIZE 9
 
 #define TRINAMIC_ADDR 0
-#define PULSE_DIV 3
-#define RAMP_DIV 7
+#define DEFAULT_PULSE_DIV 3
+#define DEFAULT_RAMP_DIV 7
 
 
 class epicsShareClass TrinamicAxis : public asynMotorAxis
@@ -59,8 +59,8 @@ class epicsShareClass TrinamicController : public asynMotorController
 
 		char trinamicAddr = TRINAMIC_ADDR;
         // TODO: set below to chars?
-		unsigned int pulse_div = PULSE_DIV;
-		unsigned int ramp_div = RAMP_DIV;
+		unsigned int pulse_div = DEFAULT_PULSE_DIV;
+		unsigned int ramp_div = DEFAULT_RAMP_DIV;
         unsigned int run_current = 0; 
         unsigned int standby_current = 0; 
         unsigned int ustep_res = 0; 

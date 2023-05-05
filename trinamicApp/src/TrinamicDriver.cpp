@@ -135,7 +135,8 @@ unsigned int TrinamicController::accel_steps_to_int (double acceleration, unsign
   */
 
 TrinamicController::TrinamicController(const char* portName, const char* TrinamicPortName,
-		int numAxes, double movingPollPeriod, double idlePollPeriod)
+		int numAxes, double movingPollPeriod, double idlePollPeriod, pulse_div, ramp_div,
+        run_current, standby_current, ustep_res)
 		: asynMotorController(portName, numAxes, NUM_TRINAMIC_PARAMS, 
                          0, // No additional callback interfaces beyond those in base class
                          0,
@@ -158,6 +159,13 @@ TrinamicController::TrinamicController(const char* portName, const char* Trinami
 	{
 		pAxis = new TrinamicAxis(this, axis);	
 	}
+
+    // set controller specific parameters:
+    this->pulse_div = pulse_div;
+    this->ramp_div = ramp_div;
+    this->run_current = run_current;
+    this->standby_current = standby_current;
+    this->ustep_res = ustep_res;
 
     // inital commands to send:
     
@@ -226,10 +234,13 @@ TrinamicController::TrinamicController(const char* portName, const char* Trinami
   */
 
 extern "C" int TrinamicCreateController(const char* portName, const char* TrinamicPortName, 
-		int numAxes, int movingPollPeriod, int idlePollPeriod)
+		int numAxes, int movingPollPeriod, int idlePollPeriod, unsigned int pulse_div, 
+        unsigned int ramp_div, unsigned int run_current, unsigned int standby_current,
+        unsigned int ustep_res)
 {
 	TrinamicController* pTrinamicController = new TrinamicController(portName, TrinamicPortName,
-			numAxes, movingPollPeriod/1000., idlePollPeriod/1000.);
+			numAxes, movingPollPeriod/1000., idlePollPeriod/1000., pulse_div, ramp_div,
+            run_current, standby_current, ustep_res);
     pTrinamicController = NULL;
     return(asynSuccess);
 }
@@ -746,17 +757,28 @@ static const iocshArg TrinamicCreateControllerArg1 = {"Trinamic port name", iocs
 static const iocshArg TrinamicCreateControllerArg2 = {"Number of axes", iocshArgInt};
 static const iocshArg TrinamicCreateControllerArg3 = {"Moving poll period (ms)", iocshArgInt};
 static const iocshArg TrinamicCreateControllerArg4 = {"Idle poll period (ms)", iocshArgInt};
+static const iocshArg TrinamicCreateControllerArg5 = {"pulse divisor", iocshArgInt};
+static const iocshArg TrinamicCreateControllerArg6 = {"ramp divisor", iocshArgInt};
+static const iocshArg TrinamicCreateControllerArg7 = {"run current", iocshArgInt};
+static const iocshArg TrinamicCreateControllerArg8 = {"standby current", iocshArgInt};
+static const iocshArg TrinamicCreateControllerArg9 = {"microstep resolution", iocshArgInt};
 static const iocshArg * const TrinamicCreateControllerArgs[] = {&TrinamicCreateControllerArg0,
                                                              &TrinamicCreateControllerArg1,
                                                              &TrinamicCreateControllerArg2,
                                                              &TrinamicCreateControllerArg3,
-                                                             &TrinamicCreateControllerArg4};
+                                                             &TrinamicCreateControllerArg4,
+                                                             &TrinamicCreateControllerArg5,
+                                                             &TrinamicCreateControllerArg6,
+                                                             &TrinamicCreateControllerArg7,
+                                                             &TrinamicCreateControllerArg8,
+                                                             &TrinamicCreateControllerArg9};
 static const iocshFuncDef TrinamicCreateControllerDef = {"TrinamicCreateController", 5, 
 	TrinamicCreateControllerArgs};
 
 static void TrinamicCreateControllerCallFunc(const iocshArgBuf *args)
 {
-	TrinamicCreateController(args[0].sval, args[1].sval, args[2].ival, args[3].ival, args[4].ival);
+	TrinamicCreateController(args[0].sval, args[1].sval, args[2].ival, args[3].ival, 
+        args[4].ival, args[5].ival, args[6].ival, args[7].ival, args[8].ival, args[9].ival);
 }
 
 static void TrinamicRegister(void)
