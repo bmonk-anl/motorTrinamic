@@ -316,6 +316,40 @@ TrinamicAxis::TrinamicAxis(TrinamicController *pC, int axisNo)
 	pC_->calcTrinamicChecksum(pC_->outString_);
 
 	status = pC_->writeReadController();
+    
+    // enable left limit switch
+    // format: <address> 05 0D <motor #> <0 (enable) (4 bytes)> <checksum>
+	pC_->outString_[0] = pC_->trinamicAddr;
+	pC_->outString_[1] = 0x05;
+	pC_->outString_[2] = 0x0D;
+	pC_->outString_[3] = (char)axisNo_;
+
+	// set 4 bytes of desired value (only need to set last byte, max is 255)
+	pC_->outString_[4] = 0; 
+	pC_->outString_[5] = 0; 
+	pC_->outString_[6] = 0; 
+	pC_->outString_[7] = 0; 
+
+	pC_->calcTrinamicChecksum(pC_->outString_);
+
+	status = pC_->writeReadController();
+    
+    // enable right limit switch
+    // format: <address> 05 0C <motor #> <0 (enable) (4 bytes)> <checksum>
+	pC_->outString_[0] = pC_->trinamicAddr;
+	pC_->outString_[1] = 0x05;
+	pC_->outString_[2] = 0x0C;
+	pC_->outString_[3] = (char)axisNo_;
+
+	// set 4 bytes of desired value (only need to set last byte, max is 255)
+	pC_->outString_[4] = 0; 
+	pC_->outString_[5] = 0; 
+	pC_->outString_[6] = 0; 
+	pC_->outString_[7] = 0; 
+
+	pC_->calcTrinamicChecksum(pC_->outString_);
+
+	status = pC_->writeReadController();
 }
 
 /** Reports on status of the axis
@@ -339,22 +373,6 @@ asynStatus TrinamicAxis::sendAccelAndVelocity(double acceleration, double veloci
 {
 	asynStatus status;
 
-	// get pulse divisor
-	// 
-	//// TODO: what happens if no response?
-	//sprintf(pC_->outString_, "TODO", axisNo_);
-	//comStatus = pC_->writeReadController();
-	//if (comStatus) goto skip;
-	//// the response is in the form TODO
-	//pulse_div = std::stoi(&pC_->inString_[5]);
-	//
-	//// get ramp divisor
-	//sprintf(pC_->outString_, "TODO", axisNo_);
-	//comStatus = pC_->writeReadController();
-	//if (comStatus) goto skip;
-	//// the response is in the form TODO
-	//ramp_div = std::stoi(&pC_->inString_[5]);
-	
 	unsigned int accel_int;
     int vel_int;
     // TODO: dont pass pulse and ramp dive to functions, they are controller methods	
@@ -541,10 +559,10 @@ asynStatus TrinamicAxis::moveVelocity(double minVelocity, double maxVelocity, do
 	
 	pC_->calcTrinamicChecksum(pC_->outString_);
 
-    lock();
+    pC_->lock();
 	status = pC_->writeReadController();
-    // epicsThreadSleep(0.01);
-    unlock();
+    epicsThreadSleep(0.01);
+    pC_->unlock();
 
 	return status;
 }
@@ -553,6 +571,7 @@ asynStatus TrinamicAxis::stop(double acceleration)
 {
     // TODO: set acceleration?
 	asynStatus status;
+
 	// stop: <address> 03 00 <motor #> 00 00 00 00 <checksum>
 	pC_->outString_[0] = pC_->trinamicAddr;
 	pC_->outString_[1] = 0x03;
@@ -675,17 +694,17 @@ asynStatus TrinamicAxis::poll(bool *moving)
 	if (comStatus) goto skip;
 	
     // check if any byte is not 0
-    // done = !(pC_->inString_[4] || pC_->inString_[5] || pC_->inString_[6] || pC_->inString_[7]);
-    if ((pC_->inString_[4] != 0)||
-        (pC_->inString_[5] != 0)||
-        (pC_->inString_[6] != 0)||
-        (pC_->inString_[7] != 0))
-    {
-        done=0;
-    }
-    else {
-        done=1;
-    } 
+    done = !(pC_->inString_[4] || pC_->inString_[5] || pC_->inString_[6] || pC_->inString_[7]);
+    // if ((pC_->inString_[4] != 0)||
+    //     (pC_->inString_[5] != 0)||
+    //     (pC_->inString_[6] != 0)||
+    //     (pC_->inString_[7] != 0))
+    // {
+    //     done=0;
+    // }
+    // else {
+    //     done=1;
+    // } 
 
 	setIntegerParam(pC_->motorStatusDone_, done);
 	*moving = done ? false : true;	
@@ -755,7 +774,11 @@ asynStatus TrinamicAxis::poll(bool *moving)
 	if (comStatus) goto skip;
 	// 1 means switch is activated
 	leftLimit = (int) (pC_->inString_[7] & 0x000000FF);
-	setIntegerParam(pC_->motorStatusHighLimit_, leftLimit);
+	setIntegerParam(pC_->motorStatusLowLimit_, leftLimit);
+
+    // cancel move (stop) if limit hit
+    // default behavior is that if limit is lifted, move will continue
+    if (rightLimit || leftLimit) comStatus = stop(0);
 
 	skip:
 	setIntegerParam(pC_->motorStatusProblem_, comStatus ? 1:0);
