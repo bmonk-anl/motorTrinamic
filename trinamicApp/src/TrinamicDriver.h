@@ -35,6 +35,9 @@ class epicsShareClass TrinamicAxis : public asynMotorAxis
 		//asynStatus setClosedLoop(bool closedLoop);
 	private:
 		TrinamicController* pC_;
+
+        int pastLeftLimit=0;
+        int pastRightLimit=0;
 		//functions below for controller specific commands
 		asynStatus sendAccelAndVelocity(double accel, double velocity);
 	friend class TrinamicController;

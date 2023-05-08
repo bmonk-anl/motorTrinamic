@@ -457,6 +457,12 @@ asynStatus TrinamicAxis::move(double position, int relative, double minVelocity,
 {
 	asynStatus status;
 
+    // TODO
+    // don't send move if limits are activated
+    // separate function for getting limits??
+    // if(
+    // getIntegerParam(pC_->motorStatusLowLimit_, leftLimit);
+
 	// set acceleration and velocity:
 	status = sendAccelAndVelocity(acceleration, maxVelocity);
 	
@@ -778,7 +784,10 @@ asynStatus TrinamicAxis::poll(bool *moving)
 
     // cancel move (stop) if limit hit
     // default behavior is that if limit is lifted, move will continue
-    if (rightLimit || leftLimit) comStatus = stop(0);
+    // if ((rightLimit || leftLimit) && !(pastLeftLimit || pastRightLimit)) comStatus = stop(0);
+    if ((rightLimit && !pastRightLimit) || (leftLimit && !pastLeftLimit)) comStatus = stop(0);
+    pastLeftLimit = leftLimit;
+    pastRightLimit = rightLimit;
 
 	skip:
 	setIntegerParam(pC_->motorStatusProblem_, comStatus ? 1:0);
