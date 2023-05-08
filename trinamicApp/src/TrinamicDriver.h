@@ -14,6 +14,9 @@
 #define TRINAMIC_ADDR 0
 #define DEFAULT_PULSE_DIV 3
 #define DEFAULT_RAMP_DIV 7
+#define DEFAULT_RUN_CURRENT 127 
+#define DEFAULT_STANDBY_CURRENT 8
+#define DEFAULT_USTEP_RES 8 
 
 
 class epicsShareClass TrinamicAxis : public asynMotorAxis
@@ -41,7 +44,9 @@ class epicsShareClass TrinamicController : public asynMotorController
 {
 	public:
 		TrinamicController(const char* portName, const char* TrinamicPortName, int numAxes, 
-				double movingPollPeriod, double idlePollPeriod);
+				double movingPollPeriod, double idlePollPeriod, unsigned int pulse_div, 
+                unsigned int ramp_div, unsigned int run_current, unsigned int standby_current, 
+                unsigned int ustep_res);
 		
 		void report(FILE* fp, int level);
 		TrinamicAxis* getAxis(asynUser *pasynUser);
@@ -61,9 +66,9 @@ class epicsShareClass TrinamicController : public asynMotorController
         // TODO: set below to chars?
 		unsigned int pulse_div = DEFAULT_PULSE_DIV;
 		unsigned int ramp_div = DEFAULT_RAMP_DIV;
-        unsigned int run_current = 0; 
-        unsigned int standby_current = 0; 
-        unsigned int ustep_res = 0; 
+        unsigned int run_current = DEFAULT_RUN_CURRENT; 
+        unsigned int standby_current = DEFAULT_STANDBY_CURRENT; 
+        unsigned int ustep_res = DEFAULT_USTEP_RES; 
 
 	friend class TrinamicAxis;
 };
