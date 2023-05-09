@@ -520,17 +520,20 @@ asynStatus TrinamicAxis::move(double position, int relative, double minVelocity,
     // TODO
     // separate function for getting limits??
     status = getLimits();
-    pC_->getIntegerParam(pC_->motorStatusLowLimit_, &leftLimit);
-    pC_->getIntegerParam(pC_->motorStatusHighLimit_, &rightLimit);
+    pC_->getIntegerParam((int)axisNo_, pC_->motorStatusLowLimit_, &leftLimit);
+    pC_->getIntegerParam((int)axisNo_, pC_->motorStatusHighLimit_, &rightLimit);
     
-    pC_->getIntegerParam(pC_->motorStatusDirection_, &targetDir);
+    pC_->getDoubleParam((int)axisNo_, pC_->motorPosition_, &curPosition);
+    
+    // don't send move if limits are activated
+    if (relative) { 
+        targetDir = (position >= 0)? 1 : -1;
+    }
+    else {
+        targetDir = (position >= curPosition)? 1 : -1;
+    }
 
-	pC_->getDoubleParam(pC_->motorPosition_, &curPosition);
-
-    // // don't send move if limits are activated
-    // if ((leftLimit && <dir negative>) || 
-    //     (rightLimit && <dir positive>)) 
-    //     return asynStatus;
+    if ((leftLimit && (targetDir == -1)) || (rightLimit && (targetDir == 1))) {return status;}
 
 	// set acceleration and velocity:
 	status = sendAccelAndVelocity(acceleration, maxVelocity);
@@ -718,8 +721,8 @@ asynStatus TrinamicAxis::poll(bool *moving)
 {
 	int done;
 	// int driveOn;
-	int rightLimit;
-	int leftLimit;
+	// int rightLimit;
+	// int leftLimit;
 	double position;
 	asynStatus comStatus;
 
@@ -808,55 +811,25 @@ asynStatus TrinamicAxis::poll(bool *moving)
 
 	// setIntegerParam(pC_->motorStatusDone_, done);
 	// *moving = done ? false : true;	
+	
+	// store previous values of limits
+    int prevLeftLimit, prevRightLimit, curLeftLimit, curRightLimit; 
+    pC_->getIntegerParam((int)axisNo_, pC_->motorStatusLowLimit_, &prevLeftLimit);
+    pC_->getIntegerParam((int)axisNo_, pC_->motorStatusHighLimit_, &prevRightLimit);
 
 	// Read the limit status
-	// get lim status: <address> 06 0A/0B (right/left) <motor #> 00 00 00 00 <checksum>
-	// get right limit
-	pC_->outString_[0] = pC_->trinamicAddr;
-	pC_->outString_[1] = 0x06;
-	pC_->outString_[2] = 0x0A;
-	pC_->outString_[3] = (char)axisNo_;
+	comStatus = getLimits();
 
-	// set 4 bytes of desired value (all 0's for read)
-	pC_->outString_[4] = 0x00;
-	pC_->outString_[5] = 0x00;
-	pC_->outString_[6] = 0x00;
-	pC_->outString_[7] = 0x00;
-		
-	pC_->calcTrinamicChecksum(pC_->outString_);
-	
-	comStatus = pC_->writeReadController();
-	if (comStatus) goto skip;
-	// 1 means switch is activated
-	rightLimit = (int) (pC_->inString_[7] & 0x000000FF);
-	setIntegerParam(pC_->motorStatusHighLimit_, rightLimit);
-
-	// get left limit
-	pC_->outString_[0] = pC_->trinamicAddr;
-	pC_->outString_[1] = 0x06;
-	pC_->outString_[2] = 0x0B;
-	pC_->outString_[3] = (char)axisNo_;
-
-	// set 4 bytes of desired value (all 0's for read)
-	pC_->outString_[4] = 0x00;
-	pC_->outString_[5] = 0x00;
-	pC_->outString_[6] = 0x00;
-	pC_->outString_[7] = 0x00;
-		
-	pC_->calcTrinamicChecksum(pC_->outString_);
-	
-	comStatus = pC_->writeReadController();
-	if (comStatus) goto skip;
-	// 1 means switch is activated
-	leftLimit = (int) (pC_->inString_[7] & 0x000000FF);
-	setIntegerParam(pC_->motorStatusLowLimit_, leftLimit);
+    // store current limit values
+    // TODO (?) optimize by returning limit values in getLimits()? 
+    pC_->getIntegerParam((int)axisNo_, pC_->motorStatusLowLimit_, &curLeftLimit);
+    pC_->getIntegerParam((int)axisNo_, pC_->motorStatusHighLimit_, &curRightLimit);
 
     // cancel move (stop) if limit hit
     // default behavior is that if limit is lifted, move will continue
-    // if ((rightLimit || leftLimit) && !(pastLeftLimit || pastRightLimit)) comStatus = stop(0);
-    if ((rightLimit && !pastRightLimit) || (leftLimit && !pastLeftLimit)) comStatus = stop(0);
-    pastLeftLimit = leftLimit;
-    pastRightLimit = rightLimit;
+    pC_->lock();
+    if ((curRightLimit && !prevRightLimit) || (curLeftLimit && !prevLeftLimit)) comStatus = stop(0);
+    pC_->unlock();
 
 	skip:
 	setIntegerParam(pC_->motorStatusProblem_, comStatus ? 1:0);
