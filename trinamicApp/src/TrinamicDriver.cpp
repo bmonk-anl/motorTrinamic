@@ -368,6 +368,62 @@ void TrinamicAxis::report(FILE *fp, int level)
 	asynMotorAxis::report(fp, level);
 }
 
+// function to get limits since done twice and need to read before moving
+asynStatus TrinamicAxis::getLimits()
+{
+    asynStatus status;
+    int leftLimit, rightLimit;
+
+	// Read the limit status
+	// get lim status: <address> 06 0A/0B (right/left) <motor #> 00 00 00 00 <checksum>
+	// get right limit
+	pC_->outString_[0] = pC_->trinamicAddr;
+	pC_->outString_[1] = 0x06;
+	pC_->outString_[2] = 0x0A;
+	pC_->outString_[3] = (char)axisNo_;
+
+	// set 4 bytes of desired value (all 0's for read)
+	pC_->outString_[4] = 0x00;
+	pC_->outString_[5] = 0x00;
+	pC_->outString_[6] = 0x00;
+	pC_->outString_[7] = 0x00;
+		
+	pC_->calcTrinamicChecksum(pC_->outString_);
+	
+	status = pC_->writeReadController();
+	if (status) return status;
+	// 1 means switch is activated
+	rightLimit = (int) (pC_->inString_[7] & 0x000000FF);
+	setIntegerParam(pC_->motorStatusHighLimit_, rightLimit);
+
+	// get left limit
+	pC_->outString_[0] = pC_->trinamicAddr;
+	pC_->outString_[1] = 0x06;
+	pC_->outString_[2] = 0x0B;
+	pC_->outString_[3] = (char)axisNo_;
+
+	// set 4 bytes of desired value (all 0's for read)
+	pC_->outString_[4] = 0x00;
+	pC_->outString_[5] = 0x00;
+	pC_->outString_[6] = 0x00;
+	pC_->outString_[7] = 0x00;
+		
+	pC_->calcTrinamicChecksum(pC_->outString_);
+	
+	status = pC_->writeReadController();
+	if (status) return status;
+	// 1 means switch is activated
+	leftLimit = (int) (pC_->inString_[7] & 0x000000FF);
+	setIntegerParam(pC_->motorStatusLowLimit_, leftLimit);
+
+    // // cancel move (stop) if limit hit
+    // // default behavior is that if limit is lifted, move will continue
+    // // if ((rightLimit || leftLimit) && !(pastLeftLimit || pastRightLimit)) comStatus = stop(0);
+    // if ((rightLimit && !pastRightLimit) || (leftLimit && !pastLeftLimit)) comStatus = stop(0);
+    // pastLeftLimit = leftLimit;
+    // pastRightLimit = rightLimit;
+    return status;
+}
 
 asynStatus TrinamicAxis::sendAccelAndVelocity(double acceleration, double velocity)
 {
@@ -457,11 +513,24 @@ asynStatus TrinamicAxis::move(double position, int relative, double minVelocity,
 {
 	asynStatus status;
 
+    int leftLimit, rightLimit;
+    int targetDir;
+    double curPosition;
+    
     // TODO
-    // don't send move if limits are activated
     // separate function for getting limits??
-    // if(
-    // getIntegerParam(pC_->motorStatusLowLimit_, leftLimit);
+    status = getLimits();
+    pC_->getIntegerParam(pC_->motorStatusLowLimit_, &leftLimit);
+    pC_->getIntegerParam(pC_->motorStatusHighLimit_, &rightLimit);
+    
+    pC_->getIntegerParam(pC_->motorStatusDirection_, &targetDir);
+
+	pC_->getDoubleParam(pC_->motorPosition_, &curPosition);
+
+    // // don't send move if limits are activated
+    // if ((leftLimit && <dir negative>) || 
+    //     (rightLimit && <dir positive>)) 
+    //     return asynStatus;
 
 	// set acceleration and velocity:
 	status = sendAccelAndVelocity(acceleration, maxVelocity);

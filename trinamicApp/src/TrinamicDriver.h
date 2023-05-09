@@ -40,6 +40,7 @@ class epicsShareClass TrinamicAxis : public asynMotorAxis
         int pastRightLimit=0;
 		//functions below for controller specific commands
 		asynStatus sendAccelAndVelocity(double accel, double velocity);
+		asynStatus getLimits();
 	friend class TrinamicController;
 };
 
