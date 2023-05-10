@@ -1,6 +1,11 @@
-// bug report:
-// setting position: need to stop before doing it, says moving after
-// use velocity instead of position reached flag
+// TODO: 
+// stop acceleration
+// jog velocity and accel
+// dont move if velocity > max?
+// make sub file with diff ustep res and show max speeds
+// don't call stop method if homing is in progress
+// weird bug where keeps trying to move into limit
+// change homingInProg to axis variable?
 
 #include "asynMotorController.h"
 #include "asynMotorAxis.h"
@@ -71,6 +76,8 @@ class epicsShareClass TrinamicController : public asynMotorController
         unsigned int run_current = DEFAULT_RUN_CURRENT; 
         unsigned int standby_current = DEFAULT_STANDBY_CURRENT; 
         unsigned int ustep_res = DEFAULT_USTEP_RES; 
+
+        int homingInProg = 0;
 
 	friend class TrinamicAxis;
 };

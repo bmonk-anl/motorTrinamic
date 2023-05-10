@@ -471,9 +471,8 @@ asynStatus TrinamicAxis::sendAccelAndVelocity(double acceleration, double veloci
 
 	status = pC_->writeReadController();
 	
-	// TODO: convert int to char (check if out of char range?)
+    // TODO: check if vel in range (?) -> dont think so because defaults to max
 	// set vel: <address> 05 04 <motor #> <vel (4)> <checksum>
-	// TODO: input actual velocity and accel
 	pC_->outString_[0] = pC_->trinamicAddr;
 	pC_->outString_[1] = 0x05;
 	pC_->outString_[2] = 0x04;
@@ -577,8 +576,33 @@ asynStatus TrinamicAxis::home(double minVelocity, double maxVelocity,
 {
 	asynStatus status;
 	// home (aka start reference search RFS): <address> 0D 00 <motor #> <0 (4)> <checksum>
+	pC_->homingInProg = 1;
+  	// status = sendAccelAndVelocity(acceleration, maxVelocity);
+    
+    // set reference search mode: <address> 05 05 <motor #> <accel (4)> <checksum>
+	pC_->outString_[0] = pC_->trinamicAddr;
+	pC_->outString_[1] = 0x05;
+	pC_->outString_[2] = 0xC1;
+	pC_->outString_[3] = (char)axisNo_;
+    
+    if (forwards) {
+        // search forwards
+	    pC_->outString_[4] = 0x00; 
+	    pC_->outString_[5] = 0x00; 
+	    pC_->outString_[6] = 0x00; 
+	    pC_->outString_[7] = 0x41; 
+    }
+    else {
+        //search reverse
+	    pC_->outString_[4] = 0x00; 
+	    pC_->outString_[5] = 0x00; 
+	    pC_->outString_[6] = 0x00; 
+	    pC_->outString_[7] = 0x01; 
+    }
+	
+	pC_->calcTrinamicChecksum(pC_->outString_);
 
-  	status = sendAccelAndVelocity(acceleration, maxVelocity);
+	status = pC_->writeReadController();
 
 	pC_->outString_[0] = pC_->trinamicAddr;
 	pC_->outString_[1] = 0x0D;
@@ -600,20 +624,12 @@ asynStatus TrinamicAxis::moveVelocity(double minVelocity, double maxVelocity, do
 {
 	asynStatus status;
 	// send accel and velocity
-	// double absVelocity = (maxVelocity > 0.) ? maxVelocity : -1*maxVelocity;
+	double absVelocity = (maxVelocity >= 0.) ? maxVelocity : -1*maxVelocity;
 	
-	// status = sendAccelAndVelocity(acceleration, absVelocity);
+	status = sendAccelAndVelocity(acceleration, absVelocity);
 
-	int vel_int = pC_->vel_steps_to_int(maxVelocity, pC_->pulse_div);	
-    if (vel_int < 0) vel_int = (-1)*vel_int;
-    
-	
-	// // move vel: <address> 01/02 00 (rotate right/left) <vel position (4)> <checksum> 
-	// // maxVelocity can either be positive or negative, so only use rotate right command
-	// pC_->outString_[0] = pC_->trinamicAddr;
-	// pC_->outString_[1] = 0x01;
-	// pC_->outString_[2] = 0x00;
-	// pC_->outString_[3] = (char)axisNo_;
+	int vel_int = pC_->vel_steps_to_int(absVelocity, pC_->pulse_div);	
+    // if (vel_int < 0) vel_int = (-1)*vel_int;
 	
 	if (maxVelocity >= 0) {
 		pC_->outString_[0] = pC_->trinamicAddr;
@@ -648,7 +664,28 @@ asynStatus TrinamicAxis::moveVelocity(double minVelocity, double maxVelocity, do
 asynStatus TrinamicAxis::stop(double acceleration)
 {
     // TODO: set acceleration?
+    unsigned int accel_int;
+
 	asynStatus status;
+	
+    accel_int = pC_->accel_steps_to_int(acceleration, pC_->pulse_div, pC_->ramp_div);	
+	
+    // set accl: <address> 05 05 <motor #> <accel (4)> <checksum>
+	pC_->outString_[0] = pC_->trinamicAddr;
+	pC_->outString_[1] = 0x05;
+	pC_->outString_[2] = 0x05;
+	pC_->outString_[3] = (char)axisNo_;
+
+	// set 4 bytes of desired value
+	pC_->outString_[4] = (char)((accel_int & 0xFF000000) >> 24);
+	pC_->outString_[5] = (char)((accel_int & 0x00FF0000) >> 16);
+	pC_->outString_[6] = (char)((accel_int & 0x0000FF00) >> 8);
+	pC_->outString_[7] = (char)(accel_int & 0x000000FF);		
+	
+	pC_->calcTrinamicChecksum(pC_->outString_);
+
+	status = pC_->writeReadController();
+    // if (status) return status;
 
 	// stop: <address> 03 00 <motor #> 00 00 00 00 <checksum>
 	pC_->outString_[0] = pC_->trinamicAddr;
@@ -776,18 +813,7 @@ asynStatus TrinamicAxis::poll(bool *moving)
 	
     // check if any byte is not 0
     done = !(pC_->inString_[4] || pC_->inString_[5] || pC_->inString_[6] || pC_->inString_[7]);
-    // if ((pC_->inString_[4] != 0)||
-    //     (pC_->inString_[5] != 0)||
-    //     (pC_->inString_[6] != 0)||
-    //     (pC_->inString_[7] != 0))
-    // {
-    //     done=0;
-    // }
-    // else {
-    //     done=1;
-    // } 
-
-    // direction = 1 if positive, -1 if negative, 0 if stopped
+    
     if (done) {
         curDir = 0;
     }
@@ -839,9 +865,16 @@ asynStatus TrinamicAxis::poll(bool *moving)
     // pC_->getDoubleParam((int)axisNo_, pC_->motorPosition_, &curPosition);
     // cancel move (stop) if limit hit
     // default behavior is that if limit is lifted, move will continue
-    if ((curRightLimit && !prevRightLimit && (curDir == 1)) ||
-        (curLeftLimit && !prevLeftLimit && (curDir == -1))) {
-        comStatus = stop(0);
+    double accel;
+    pC_->getDoubleParam((int)axisNo_, pC_->motorAccel_, &accel);
+
+    if ((curRightLimit && !prevRightLimit && ((curDir == 1) || (done == 1))) ||
+        (curLeftLimit && !prevLeftLimit && ((curDir == -1) || (done == 1)))) {
+        if (pC_->homingInProg) {
+            pC_->homingInProg = 0;
+            goto skip;
+        }
+        comStatus = stop(accel);
     }
 
 	skip:
