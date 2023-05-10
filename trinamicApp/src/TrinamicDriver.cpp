@@ -173,7 +173,6 @@ TrinamicController::TrinamicController(const char* portName, const char* Trinami
 		pAxis = new TrinamicAxis(this, axis);	
 	}
 
-
 	startPoller(movingPollPeriod, idlePollPeriod, 2);
 }
 
@@ -663,7 +662,6 @@ asynStatus TrinamicAxis::moveVelocity(double minVelocity, double maxVelocity, do
 
 asynStatus TrinamicAxis::stop(double acceleration)
 {
-    // TODO: set acceleration?
     unsigned int accel_int;
 
 	asynStatus status;
@@ -725,7 +723,6 @@ asynStatus TrinamicAxis::setPosition(double position)
 
 	status = pC_->writeReadController();
 
-	//TODO: NINT + calc position
 	int pos_int = NINT(position);
 	
 	// set pos: <address> 05 01 <motor #> <position (4)> <checksum> 
@@ -758,11 +755,10 @@ asynStatus TrinamicAxis::poll(bool *moving)
 {
 	int done;
 	// int driveOn;
-	// int rightLimit;
-	// int leftLimit;
 	double position;
     int prevLeftLimit, prevRightLimit, curLeftLimit, curRightLimit; 
     int curDir;
+    double accel;
 	
     asynStatus comStatus;
 
@@ -811,9 +807,10 @@ asynStatus TrinamicAxis::poll(bool *moving)
 	comStatus = pC_->writeReadController();
 	if (comStatus) goto skip;
 	
-    // check if any byte is not 0
+    // check if any velocity byte is not 0
     done = !(pC_->inString_[4] || pC_->inString_[5] || pC_->inString_[6] || pC_->inString_[7]);
     
+    // get current direction from MSB byte of velocity
     if (done) {
         curDir = 0;
     }
@@ -824,31 +821,6 @@ asynStatus TrinamicAxis::poll(bool *moving)
 	setIntegerParam(pC_->motorStatusDone_, done);
 	*moving = done ? false : true;	
 
-	// // Read the moving status of this motor
-	// // get moving status (position reached flag, 0 if moving): 
-	// // <address> 06 08 <motor #> 00 00 00 00 <checksum>
-	// pC_->outString_[0] = pC_->trinamicAddr;
-	// pC_->outString_[1] = 0x06;
-	// pC_->outString_[2] = 0x08;
-	// pC_->outString_[3] = (char)axisNo_;
-
-	// // set 4 bytes of desired value (all 0's for read)
-	// pC_->outString_[4] = 0x00;
-	// pC_->outString_[5] = 0x00;
-	// pC_->outString_[6] = 0x00;
-	// pC_->outString_[7] = 0x00;
-	//  
-	// pC_->calcTrinamicChecksum(pC_->outString_);
-	// 
-	// comStatus = pC_->writeReadController();
-	// if (comStatus) goto skip;
-	// // only need LSB for motor flag
-	// // 1 means position reached
-	// done = (int) (pC_->inString_[7] & 0x000000FF);
-
-	// setIntegerParam(pC_->motorStatusDone_, done);
-	// *moving = done ? false : true;	
-	
 	// store previous values of limits
     pC_->getIntegerParam((int)axisNo_, pC_->motorStatusLowLimit_, &prevLeftLimit);
     pC_->getIntegerParam((int)axisNo_, pC_->motorStatusHighLimit_, &prevRightLimit);
@@ -861,15 +833,13 @@ asynStatus TrinamicAxis::poll(bool *moving)
     pC_->getIntegerParam((int)axisNo_, pC_->motorStatusLowLimit_, &curLeftLimit);
     pC_->getIntegerParam((int)axisNo_, pC_->motorStatusHighLimit_, &curRightLimit);
     
-    // double curPosition;
-    // pC_->getDoubleParam((int)axisNo_, pC_->motorPosition_, &curPosition);
     // cancel move (stop) if limit hit
     // default behavior is that if limit is lifted, move will continue
-    double accel;
     pC_->getDoubleParam((int)axisNo_, pC_->motorAccel_, &accel);
 
     if ((curRightLimit && !prevRightLimit && ((curDir == 1) || (done == 1))) ||
         (curLeftLimit && !prevLeftLimit && ((curDir == -1) || (done == 1)))) {
+        // don't cancel motion if homing
         if (pC_->homingInProg) {
             pC_->homingInProg = 0;
             goto skip;

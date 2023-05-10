@@ -1,11 +1,12 @@
 // TODO: 
-// stop acceleration
-// jog velocity and accel
-// dont move if velocity > max?
+// dont move if velocity > max? (currently defaults to sending max vel)
 // make sub file with diff ustep res and show max speeds
-// don't call stop method if homing is in progress
-// weird bug where keeps trying to move into limit
 // change homingInProg to axis variable?
+// update bit shifts?
+// why homing accel weird? if homing is first thing done, might cause problems
+// test relative move
+// figure out which methods to return after each failed command 
+// add additional parameters to initialization print
 
 #include "asynMotorController.h"
 #include "asynMotorAxis.h"
