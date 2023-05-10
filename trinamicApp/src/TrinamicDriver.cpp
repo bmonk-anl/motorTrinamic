@@ -724,7 +724,10 @@ asynStatus TrinamicAxis::poll(bool *moving)
 	// int rightLimit;
 	// int leftLimit;
 	double position;
-	asynStatus comStatus;
+    int prevLeftLimit, prevRightLimit, curLeftLimit, curRightLimit; 
+    int curDir;
+	
+    asynStatus comStatus;
 
 	// Read the current motor position
 	// get pos: <address> 06 01 <motor #> 00 00 00 00 <checksum> 
@@ -749,8 +752,8 @@ asynStatus TrinamicAxis::poll(bool *moving)
 	position = (double) (int)(
 		((pC_->inString_[4] << 24) & 0xFF000000) | 
 		((pC_->inString_[5] << 16) & 0x00FF0000) | 
-		((pC_->inString_[6] << 8) & 0x0000FF00) | 
-		((pC_->inString_[7] << 0) & 0x000000FF) );
+		((pC_->inString_[6] << 8 ) & 0x0000FF00) | 
+		((pC_->inString_[7] << 0 ) & 0x000000FF) );
 
 	setDoubleParam(pC_->motorPosition_, position);
 
@@ -784,6 +787,14 @@ asynStatus TrinamicAxis::poll(bool *moving)
     //     done=1;
     // } 
 
+    // direction = 1 if positive, -1 if negative, 0 if stopped
+    if (done) {
+        curDir = 0;
+    }
+    else {
+        curDir = ((int)pC_->inString_[4] < 0) ? -1 : 1;
+    }
+        
 	setIntegerParam(pC_->motorStatusDone_, done);
 	*moving = done ? false : true;	
 
@@ -813,7 +824,6 @@ asynStatus TrinamicAxis::poll(bool *moving)
 	// *moving = done ? false : true;	
 	
 	// store previous values of limits
-    int prevLeftLimit, prevRightLimit, curLeftLimit, curRightLimit; 
     pC_->getIntegerParam((int)axisNo_, pC_->motorStatusLowLimit_, &prevLeftLimit);
     pC_->getIntegerParam((int)axisNo_, pC_->motorStatusHighLimit_, &prevRightLimit);
 
@@ -824,12 +834,15 @@ asynStatus TrinamicAxis::poll(bool *moving)
     // TODO (?) optimize by returning limit values in getLimits()? 
     pC_->getIntegerParam((int)axisNo_, pC_->motorStatusLowLimit_, &curLeftLimit);
     pC_->getIntegerParam((int)axisNo_, pC_->motorStatusHighLimit_, &curRightLimit);
-
+    
+    // double curPosition;
+    // pC_->getDoubleParam((int)axisNo_, pC_->motorPosition_, &curPosition);
     // cancel move (stop) if limit hit
     // default behavior is that if limit is lifted, move will continue
-    pC_->lock();
-    if ((curRightLimit && !prevRightLimit) || (curLeftLimit && !prevLeftLimit)) comStatus = stop(0);
-    pC_->unlock();
+    if ((curRightLimit && !prevRightLimit && (curDir == 1)) ||
+        (curLeftLimit && !prevLeftLimit && (curDir == -1))) {
+        comStatus = stop(0);
+    }
 
 	skip:
 	setIntegerParam(pC_->motorStatusProblem_, comStatus ? 1:0);
