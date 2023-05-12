@@ -7,6 +7,8 @@
 // test relative move
 // figure out which methods to return after each failed command 
 // add additional parameters to initialization print
+// still get bug of not stopping
+// cap position sent?
 
 #include "asynMotorController.h"
 #include "asynMotorAxis.h"
@@ -17,7 +19,7 @@
 // fixed # of bytes that is sent with each command 
 #define TRINAMIC_CMD_SIZE 9
 
-#define TRINAMIC_ADDR 0
+#define TRINAMIC_ADDR 0 
 #define DEFAULT_PULSE_DIV 3
 #define DEFAULT_RAMP_DIV 7
 #define DEFAULT_RUN_CURRENT 127 
@@ -45,6 +47,8 @@ class epicsShareClass TrinamicAxis : public asynMotorAxis
 		//functions below for controller specific commands
 		asynStatus sendAccelAndVelocity(double accel, double velocity);
 		asynStatus getLimits();
+
+        int startedMove = 0;
 	friend class TrinamicController;
 };
 

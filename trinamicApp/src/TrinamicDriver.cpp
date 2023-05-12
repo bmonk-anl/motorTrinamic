@@ -7,7 +7,7 @@ USAGE...    Motor driver support for any Trinamic controller that uses the TMCL 
 Bryan Monk
 March 14, 2023
 
-Based on https://github.com/epics-motor/motorAcs/blob/master/acsApp/src/TrinamicDriver.cpp
+Based on https://github.com/epics-motor/motorAcs/blob/master/acsApp/src/MCB4BDriver.cpp
 	by Mark Rivers
 
 
@@ -514,9 +514,13 @@ asynStatus TrinamicAxis::move(double position, int relative, double minVelocity,
     int leftLimit, rightLimit;
     int targetDir;
     double curPosition;
+	
+    // abort move if out of range
+    if ((position < -2147483648) || (position > 2147483648)) {
+        // TODO: add asyntrace message
+        return asynError; 
+    }
     
-    // TODO
-    // separate function for getting limits??
     status = getLimits();
     pC_->getIntegerParam((int)axisNo_, pC_->motorStatusLowLimit_, &leftLimit);
     pC_->getIntegerParam((int)axisNo_, pC_->motorStatusHighLimit_, &rightLimit);
@@ -535,8 +539,8 @@ asynStatus TrinamicAxis::move(double position, int relative, double minVelocity,
 
 	// set acceleration and velocity:
 	status = sendAccelAndVelocity(acceleration, maxVelocity);
-	
-	// convert position to int
+    
+    // convert position to int
 	int pos_int = NINT(position);
 
 	// send move command:
@@ -566,6 +570,7 @@ asynStatus TrinamicAxis::move(double position, int relative, double minVelocity,
 	pC_->calcTrinamicChecksum(pC_->outString_);
 	
 	status = pC_->writeReadController();
+    if (!status) startedMove = 1;
 	return status;
 
 }
@@ -654,8 +659,9 @@ asynStatus TrinamicAxis::moveVelocity(double minVelocity, double maxVelocity, do
 
     pC_->lock();
 	status = pC_->writeReadController();
-    epicsThreadSleep(0.01);
+    epicsThreadSleep(0.1);
     pC_->unlock();
+    if (!status) startedMove = 1;
 
 	return status;
 }
@@ -806,7 +812,7 @@ asynStatus TrinamicAxis::poll(bool *moving)
 	
 	comStatus = pC_->writeReadController();
 	if (comStatus) goto skip;
-	
+
     // check if any velocity byte is not 0
     done = !(pC_->inString_[4] || pC_->inString_[5] || pC_->inString_[6] || pC_->inString_[7]);
     
@@ -816,8 +822,32 @@ asynStatus TrinamicAxis::poll(bool *moving)
     }
     else {
         curDir = ((int)pC_->inString_[4] < 0) ? -1 : 1;
+        // startedMove = 0;
     }
+    
+    // // check stand still error flag 
+	// pC_->outString_[0] = pC_->trinamicAddr;
+	// pC_->outString_[1] = 0x06;
+	// pC_->outString_[2] = 0xD0;
+	// pC_->outString_[3] = (char)axisNo_;
+
+	// // set 4 bytes of desired value (all 0's for read)
+	// pC_->outString_[4] = 0x00;
+	// pC_->outString_[5] = 0x00;
+	// pC_->outString_[6] = 0x00;
+	// pC_->outString_[7] = 0x00;
+	// 
+    // pC_->calcTrinamicChecksum(pC_->outString_);
+	// 
+	// comStatus = pC_->writeReadController();
+    // done = ((pC_->inString_[7] >> 7) & 0x00000001) ? 1 : 0;
         
+    // // don't set done/moving flags in the period between successfully
+    // // sending moves and reading nonzero velocity 
+    // if (!startedMove) {
+	//     setIntegerParam(pC_->motorStatusDone_, done);
+	//     *moving = done ? false : true;	
+    // }
 	setIntegerParam(pC_->motorStatusDone_, done);
 	*moving = done ? false : true;	
 
