@@ -85,11 +85,11 @@ accel: internal units (int)
 // set checksum directly in function or return number?
 void TrinamicController::calcTrinamicChecksum(char* command)
 {
-	char checksum=0;
-	int i;
+    char checksum=0;
+    int i;
 
-	for(i=0; i<8; i++) {
-		checksum += command[i];	
+    for(i=0; i<8; i++) {
+        checksum += command[i];	
 	}
 
 	command[8] = checksum;
@@ -105,7 +105,7 @@ int TrinamicController::vel_steps_to_int (double velocity, unsigned int pulse_di
 	v_double = 0.004096 * (double)(1UL << pulse_div) * velocity;
 	v_int = NINT(v_double);
 
-	if (v_int > 2047){
+    if (v_int > 2047){
         v_int = 2047;
     }
     else if (v_int < -2047){

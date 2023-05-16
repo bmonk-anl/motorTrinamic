@@ -9,6 +9,7 @@
 // add additional parameters to initialization print
 // still get bug of not stopping
 // cap position sent?
+// send message when send too high of vel or pos
 
 #include "asynMotorController.h"
 #include "asynMotorAxis.h"
