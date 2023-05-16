@@ -203,9 +203,18 @@ extern "C" int TrinamicCreateController(const char* portName, const char* Trinam
             numAxes, movingPollPeriod/1000., idlePollPeriod/1000., pulse_div, ramp_div,
             run_current, standby_current, ustep_res);
     pTrinamicController = NULL;
-    return(asynSuccess);
-}
 
+    // check paramters are within valid range:
+    if ((pulse_div > 13) || (ramp_div > 13) ||
+        (run_current > 255) || (standby_current > 255) ||
+        (ustep_res > 8)) 
+    {
+        return(asynError);
+    }
+    else {
+        return(asynSuccess);
+    }
+}
 
 void TrinamicController::report(FILE *fp, int level)
 {
