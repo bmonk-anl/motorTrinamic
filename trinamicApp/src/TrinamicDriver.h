@@ -11,6 +11,7 @@
 // send message when send too high of vel or pos
 // check for ranges in createcontroller params
 // remove unnecessary bitmasks
+// wont stop when homing?
 
 #include "asynMotorController.h"
 #include "asynMotorAxis.h"
@@ -49,7 +50,6 @@ class epicsShareClass TrinamicAxis : public asynMotorAxis
         asynStatus sendAccelAndVelocity(double accel, double velocity);
         asynStatus getLimits();
         
-        int startedMove = 0;
     friend class TrinamicController;
 };
 
@@ -76,7 +76,7 @@ class epicsShareClass TrinamicController : public asynMotorController
                         unsigned int ramp_div);
         
         char trinamicAddr = TRINAMIC_ADDR;
-        // TODO: set below to chars?
+
         unsigned int pulse_div = DEFAULT_PULSE_DIV;
         unsigned int ramp_div = DEFAULT_RAMP_DIV;
         unsigned int run_current = DEFAULT_RUN_CURRENT; 

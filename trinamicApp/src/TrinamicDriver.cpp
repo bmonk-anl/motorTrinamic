@@ -102,14 +102,19 @@ int TrinamicController::vel_steps_to_int (double velocity, unsigned int pulse_di
     int v_int;
     
     v_double = 0.004096 * (double)(1UL << pulse_div) * velocity;
-    v_int = NINT(v_double);
+
+    if (v_double > 2047) {
+        v_double = 2047;
+        asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, 
+    	    "Commanded velocity of %f (%f after conversion) above max value, writing max velocity\n", velocity, v_double);
+    }
+    else if (v_double < -2047) {
+        v_double = -2047;
+        asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, 
+    	    "Commanded velocity below min value, writing min velocity");
+    }
     
-    if (v_int > 2047){
-        v_int = 2047;
-    }
-    else if (v_int < -2047){
-        v_int = -2047;
-    }
+    v_int = NINT(v_double);
     
     return v_int;
 }
@@ -126,8 +131,12 @@ unsigned int TrinamicController::accel_steps_to_int (double acceleration, unsign
     
     if (a_int > 2047) {
         a_int = 2047;
+        asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, 
+    	    "Commanded acceleration above max value, writing max acceleration\n");
     }
     else if (a_int < 1) {
+        asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, 
+    	    "Commanded acceleration below min value, writing min acceleration\n");
         a_int = 1;
     }
     
@@ -199,11 +208,6 @@ extern "C" int TrinamicCreateController(const char* portName, const char* Trinam
         unsigned int ramp_div, unsigned int run_current, unsigned int standby_current,
         unsigned int ustep_res)
 {
-    TrinamicController* pTrinamicController = new TrinamicController(portName, TrinamicPortName,
-            numAxes, movingPollPeriod/1000., idlePollPeriod/1000., pulse_div, ramp_div,
-            run_current, standby_current, ustep_res);
-    pTrinamicController = NULL;
-
     // check paramters are within valid range:
     if ((pulse_div > 13) || (ramp_div > 13) ||
         (run_current > 255) || (standby_current > 255) ||
@@ -211,9 +215,13 @@ extern "C" int TrinamicCreateController(const char* portName, const char* Trinam
     {
         return(asynError);
     }
-    else {
-        return(asynSuccess);
-    }
+    
+    TrinamicController* pTrinamicController = new TrinamicController(portName, TrinamicPortName,
+            numAxes, movingPollPeriod/1000., idlePollPeriod/1000., pulse_div, ramp_div,
+            run_current, standby_current, ustep_res);
+    pTrinamicController = NULL;
+
+    return(asynSuccess);
 }
 
 void TrinamicController::report(FILE *fp, int level)
@@ -530,7 +538,8 @@ asynStatus TrinamicAxis::move(double position, int relative, double minVelocity,
     
     // abort move if out of range
     if ((position < -2147483648) || (position > 2147483648)) {
-        // TODO: add asyntrace message
+        asynPrint(pC_->pasynUserSelf, ASYN_TRACE_ERROR, 
+            "Position of %f out of range\n", position);
         return asynError; 
     }
     
@@ -540,7 +549,7 @@ asynStatus TrinamicAxis::move(double position, int relative, double minVelocity,
     
     pC_->getDoubleParam((int)axisNo_, pC_->motorPosition_, &curPosition);
     
-    // don't send move if limits are activated
+    // keep track of direction sent
     if (relative) { 
         targetDir = (position >= 0)? 1 : -1;
     }
@@ -548,7 +557,9 @@ asynStatus TrinamicAxis::move(double position, int relative, double minVelocity,
         targetDir = (position >= curPosition)? 1 : -1;
     }
     
-    if ((leftLimit && (targetDir == -1)) || (rightLimit && (targetDir == 1))) {return status;}
+    // don't send move if it would be in direction that limit is activated
+    if ((leftLimit && (targetDir == -1)) || (rightLimit && (targetDir == 1)))
+        return status;
     
     // set acceleration and velocity:
     status = sendAccelAndVelocity(acceleration, maxVelocity);
@@ -582,8 +593,6 @@ asynStatus TrinamicAxis::move(double position, int relative, double minVelocity,
     pC_->calcTrinamicChecksum(pC_->outString_);
     
     status = pC_->writeReadController();
-    // TODO: remove:
-    if (!status) startedMove = 1;
     return status;
     
 }
@@ -648,6 +657,12 @@ asynStatus TrinamicAxis::moveVelocity(double minVelocity, double maxVelocity, do
     status = sendAccelAndVelocity(acceleration, absVelocity);
     
     int vel_int = pC_->vel_steps_to_int(absVelocity, pC_->pulse_div);	
+
+    // if (vel_int > 2047) {
+    //     asynPrint(
+    //     return asynError;    
+    // }
+    asynPrint(pC_->pasynUserSelf, ASYN_TRACE_ERROR, "test\n");
     
     // if velocity negative, send rotate left (ROL) command, else send rotate right (ROR)
     // format: <address> 01/02 (ROL/ROR) 00 <motor #> <velocity (4)> <checksum>
@@ -677,7 +692,6 @@ asynStatus TrinamicAxis::moveVelocity(double minVelocity, double maxVelocity, do
     status = pC_->writeReadController();
     epicsThreadSleep(0.1);
     pC_->unlock();
-    if (!status) startedMove = 1;
     
     return status;
 }
@@ -841,32 +855,8 @@ asynStatus TrinamicAxis::poll(bool *moving)
     }
     else {
         curDir = ((int)pC_->inString_[4] < 0) ? -1 : 1;
-        // startedMove = 0;
     }
     
-    // // check stand still error flag 
-    // pC_->outString_[0] = pC_->trinamicAddr;
-    // pC_->outString_[1] = 0x06;
-    // pC_->outString_[2] = 0xD0;
-    // pC_->outString_[3] = (char)axisNo_;
-    
-    // // set 4 bytes of desired value (all 0's for read)
-    // pC_->outString_[4] = 0x00;
-    // pC_->outString_[5] = 0x00;
-    // pC_->outString_[6] = 0x00;
-    // pC_->outString_[7] = 0x00;
-    // 
-    // pC_->calcTrinamicChecksum(pC_->outString_);
-    // 
-    // comStatus = pC_->writeReadController();
-    // done = ((pC_->inString_[7] >> 7) & 0x00000001) ? 1 : 0;
-        
-    // // don't set done/moving flags in the period between successfully
-    // // sending moves and reading nonzero velocity 
-    // if (!startedMove) {
-    //     setIntegerParam(pC_->motorStatusDone_, done);
-    //     *moving = done ? false : true;	
-    // }
     setIntegerParam(pC_->motorStatusDone_, done);
     *moving = done ? false : true;	
     
