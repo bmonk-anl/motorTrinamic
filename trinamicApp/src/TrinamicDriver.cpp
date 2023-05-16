@@ -87,93 +87,102 @@ void TrinamicController::calcTrinamicChecksum(char* command)
 {
     char checksum=0;
     int i;
-
+    
     for(i=0; i<8; i++) {
         checksum += command[i];	
-	}
-
-	command[8] = checksum;
-	//return checksum; 
+    }
+    
+    command[8] = checksum;
 }
 
-// convert velocity double (usteps/s) to int used in trinamic controller (1...2047)
+// convert velocity double (usteps/s) to int used in trinamic controller (-2047...2047)
 int TrinamicController::vel_steps_to_int (double velocity, unsigned int pulse_div)
 {
-	double v_double;
-	int v_int;
-
-	v_double = 0.004096 * (double)(1UL << pulse_div) * velocity;
-	v_int = NINT(v_double);
-
+    double v_double;
+    int v_int;
+    
+    v_double = 0.004096 * (double)(1UL << pulse_div) * velocity;
+    v_int = NINT(v_double);
+    
     if (v_int > 2047){
         v_int = 2047;
     }
     else if (v_int < -2047){
         v_int = -2047;
     }
-
-	return v_int;
+    
+    return v_int;
 }
 
 // convert accel double (usteps/s^2) to int used in trinamic controller (1...2047)
 unsigned int TrinamicController::accel_steps_to_int (double acceleration, unsigned int pulse_div, 
-		unsigned int ramp_div)
+        unsigned int ramp_div)
 {
-	double a_double;
-	unsigned int a_int;
-
-	a_double = (3.90625e-15) * (double)(1UL << (ramp_div+pulse_div+29)) * acceleration;
-	a_int = NINT(a_double);
-
-	if (a_int > 2047) a_int = 2047;
-
-	return a_int;
+    double a_double;
+    unsigned int a_int;
+    
+    a_double = (3.90625e-15) * (double)(1UL << (ramp_div+pulse_div+29)) * acceleration;
+    a_int = NINT(a_double);
+    
+    if (a_int > 2047) {
+        a_int = 2047;
+    }
+    else if (a_int < 1) {
+        a_int = 1;
+    }
+    
+    return a_int;
 }
 
 /** Creates a new TrinamicController object.
   * \param[in] portName          The name of the asyn port that will be created for this driver
-  * \param[in] TrinamicPortName     The name of the drvAsynSerialPort that was created previously to connect to the Trinamic controller 
+  * \param[in] TrinamicPortName  The name of the drvAsynSerialPort that was created previously to connect to the Trinamic controller 
   * \param[in] numAxes           The number of axes that this controller supports 
   * \param[in] movingPollPeriod  The time between polls when any axis is moving 
   * \param[in] idlePollPeriod    The time between polls when no axis is moving 
+  * \param[in] pulse_div         The time between polls when no axis is moving 
+  * \param[in] ramp_div          Value of pulse divisor to be sent with each move
+  * \param[in] run_current       Value of moving current to be sent on init (0...255) 
+  * \param[in] standby_current   Value of standby current to be sent on init (0...255)
+  * \param[in] ustep_res         Value of microstep resolution (0...8) 
   */
 
 TrinamicController::TrinamicController(const char* portName, const char* TrinamicPortName,
-		int numAxes, double movingPollPeriod, double idlePollPeriod, unsigned int pulse_div, 
+        int numAxes, double movingPollPeriod, double idlePollPeriod, unsigned int pulse_div, 
         unsigned int ramp_div, unsigned int run_current, unsigned int standby_current, 
         unsigned int ustep_res)
-		: asynMotorController(portName, numAxes, NUM_TRINAMIC_PARAMS, 
-                         0, // No additional callback interfaces beyond those in base class
-                         0,
-                         ASYN_CANBLOCK | ASYN_MULTIDEVICE, 
-                         1, // autoconnect
-                         0, 0)  // Default priority and stack size
+        : asynMotorController(portName, numAxes, NUM_TRINAMIC_PARAMS, 
+                0, // No additional callback interfaces beyond those in base class
+                0,
+                ASYN_CANBLOCK | ASYN_MULTIDEVICE, 
+                1, // autoconnect
+                0, 0)  // Default priority and stack size
 {
-	int axis;
-	asynStatus status;
-	TrinamicAxis* pAxis;
-	static const char* functionName = "TrinamicController::TrinamicController";
-
-	// Connect to Trinamic Controller
-	status = pasynOctetSyncIO->connect(TrinamicPortName, 0, &pasynUserController_, NULL);
-	if(status) {
-		asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, 
-				"%s: cannot connect to Trinamic controller\n", functionName);
-	}
-
+    int axis;
+    asynStatus status;
+    TrinamicAxis* pAxis;
+    static const char* functionName = "TrinamicController::TrinamicController";
+    
+    // Connect to Trinamic Controller
+    status = pasynOctetSyncIO->connect(TrinamicPortName, 0, &pasynUserController_, NULL);
+    if(status) {
+        asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, 
+    	    "%s: cannot connect to Trinamic controller\n", functionName);
+    }
+    
     // set controller specific parameters:
     this->pulse_div = pulse_div;
     this->ramp_div = ramp_div;
     this->run_current = run_current;
     this->standby_current = standby_current;
     this->ustep_res = ustep_res;
-
-	for(axis=0; axis<numAxes; axis++)
-	{
-		pAxis = new TrinamicAxis(this, axis);	
-	}
-
-	startPoller(movingPollPeriod, idlePollPeriod, 2);
+    
+    for(axis=0; axis<numAxes; axis++)
+    {
+        pAxis = new TrinamicAxis(this, axis);	
+    }
+    
+    startPoller(movingPollPeriod, idlePollPeriod, 2);
 }
 
 /** Creates a new TrinamicController object.
@@ -186,12 +195,12 @@ TrinamicController::TrinamicController(const char* portName, const char* Trinami
   */
 
 extern "C" int TrinamicCreateController(const char* portName, const char* TrinamicPortName, 
-		int numAxes, int movingPollPeriod, int idlePollPeriod, unsigned int pulse_div, 
+        int numAxes, int movingPollPeriod, int idlePollPeriod, unsigned int pulse_div, 
         unsigned int ramp_div, unsigned int run_current, unsigned int standby_current,
         unsigned int ustep_res)
 {
-	TrinamicController* pTrinamicController = new TrinamicController(portName, TrinamicPortName,
-			numAxes, movingPollPeriod/1000., idlePollPeriod/1000., pulse_div, ramp_div,
+    TrinamicController* pTrinamicController = new TrinamicController(portName, TrinamicPortName,
+            numAxes, movingPollPeriod/1000., idlePollPeriod/1000., pulse_div, ramp_div,
             run_current, standby_current, ustep_res);
     pTrinamicController = NULL;
     return(asynSuccess);
@@ -200,11 +209,11 @@ extern "C" int TrinamicCreateController(const char* portName, const char* Trinam
 
 void TrinamicController::report(FILE *fp, int level)
 {
-	fprintf(fp, "Trinamic motor driver %s, numAxes=%d, moving poll period=%f, idle poll period=%f\n",
-	  this->portName, numAxes_, movingPollPeriod_, idlePollPeriod_);
-	
-	// Call the base class method
-	asynMotorController::report(fp, level);
+    fprintf(fp, "Trinamic motor driver %s, numAxes=%d, moving poll period=%f, idle poll period=%f\n",
+        this->portName, numAxes_, movingPollPeriod_, idlePollPeriod_);
+    
+    // Call the base class method
+    asynMotorController::report(fp, level);
 }
 
 /** Returns a pointer to an TrinamicAxis object.
@@ -212,7 +221,7 @@ void TrinamicController::report(FILE *fp, int level)
   * \param[in] pasynUser asynUser structure that encodes the axis index number. */
 TrinamicAxis* TrinamicController::getAxis(asynUser *pasynUser)
 {
-	return static_cast<TrinamicAxis*>(asynMotorController::getAxis(pasynUser));
+    return static_cast<TrinamicAxis*>(asynMotorController::getAxis(pasynUser));
 }
 
 /** Returns a pointer to an TrinamicAxis object.
@@ -220,33 +229,28 @@ TrinamicAxis* TrinamicController::getAxis(asynUser *pasynUser)
   * \param[in] axisNo Axis index number. */
 TrinamicAxis* TrinamicController::getAxis(int axisNo)
 {
-	return static_cast<TrinamicAxis*>(asynMotorController::getAxis(axisNo));
+    return static_cast<TrinamicAxis*>(asynMotorController::getAxis(axisNo));
 }
 
 asynStatus TrinamicController::writeReadController()
 {
-	size_t nread;
-	return writeReadController(outString_, inString_, TRINAMIC_CMD_SIZE,
-			&nread, DEFAULT_CONTROLLER_TIMEOUT);
+    size_t nread;
+    return writeReadController(outString_, inString_, TRINAMIC_CMD_SIZE,
+        &nread, DEFAULT_CONTROLLER_TIMEOUT);
 }
 
 asynStatus TrinamicController::writeReadController(const char *output, char *input, 
-                                                    size_t maxChars, size_t *nread, double timeout)
+                                    size_t maxChars, size_t *nread, double timeout)
 {
-	size_t nwrite;
-	asynStatus status;
-	int eomReason;
-	// const char *functionName="writeReadController";
-	
-	// status = pasynOctetSyncIO->writeRead(pasynUserController_, output,
-	//                                     strlen(output), input, maxChars, timeout,
-	//                                     &nwrite, nread, &eomReason);
-	
-	status = pasynOctetSyncIO->writeRead(pasynUserController_, output,
-	                                     TRINAMIC_CMD_SIZE, input, maxChars, timeout,
-	                                     &nwrite, nread, &eomReason);
-	                      
-	return status;
+    size_t nwrite;
+    asynStatus status;
+    int eomReason;
+    
+    status = pasynOctetSyncIO->writeRead(pasynUserController_, output,
+                    TRINAMIC_CMD_SIZE, input, maxChars, timeout,
+                    &nwrite, nread, &eomReason);
+                          
+    return status;
 }
 
 
@@ -259,96 +263,96 @@ asynStatus TrinamicController::writeReadController(const char *output, char *inp
   * Initializes register numbers, etc.
   */
 TrinamicAxis::TrinamicAxis(TrinamicController *pC, int axisNo)
-	: asynMotorAxis(pC, axisNo), pC_(pC)
+        : asynMotorAxis(pC, axisNo), pC_(pC)
 {  
     // inital commands to send:
     asynStatus status;
     
     // set run current (SAP):
     // format: <address> 05 06 <motor #> <current (0-255)(4 bytes)> <checksum>
-	pC_->outString_[0] = pC_->trinamicAddr;
-	pC_->outString_[1] = 0x05;
-	pC_->outString_[2] = 0x06;
-	pC_->outString_[3] = (char)axisNo_;
-
-	// set 4 bytes of desired value (only need to set last byte, max is 255)
-	pC_->outString_[4] = 0; 
-	pC_->outString_[5] = 0; 
-	pC_->outString_[6] = 0; 
-	pC_->outString_[7] = (char)(pC_->run_current & 0x000000FF);		
-
-	pC_->calcTrinamicChecksum(pC_->outString_);
-
-	status = pC_->writeReadController();
-
+    pC_->outString_[0] = pC_->trinamicAddr;
+    pC_->outString_[1] = 0x05;
+    pC_->outString_[2] = 0x06;
+    pC_->outString_[3] = (char)axisNo_;
+    
+    // set 4 bytes of desired value (only need to set last byte, max is 255)
+    pC_->outString_[4] = 0; 
+    pC_->outString_[5] = 0; 
+    pC_->outString_[6] = 0; 
+    pC_->outString_[7] = (char)(pC_->run_current & 0x000000FF);		
+    
+    pC_->calcTrinamicChecksum(pC_->outString_);
+    
+    status = pC_->writeReadController();
+    
     // set standby current (SAP):
     // format: <address> 05 07 <motor #> <current (0-255)(4 bytes)> <checksum>
-	pC_->outString_[0] = pC_->trinamicAddr;
-	pC_->outString_[1] = 0x05;
-	pC_->outString_[2] = 0x07;
-	pC_->outString_[3] = (char)axisNo_;
-
-	// set 4 bytes of desired value (only need to set last byte, max is 255)
-	pC_->outString_[4] = 0; 
-	pC_->outString_[5] = 0; 
-	pC_->outString_[6] = 0; 
-	pC_->outString_[7] = (char)(pC_->standby_current & 0x000000FF);		
-
-	pC_->calcTrinamicChecksum(pC_->outString_);
-
-	status = pC_->writeReadController();
+    pC_->outString_[0] = pC_->trinamicAddr;
+    pC_->outString_[1] = 0x05;
+    pC_->outString_[2] = 0x07;
+    pC_->outString_[3] = (char)axisNo_;
+    
+    // set 4 bytes of desired value (only need to set last byte, max is 255)
+    pC_->outString_[4] = 0; 
+    pC_->outString_[5] = 0; 
+    pC_->outString_[6] = 0; 
+    pC_->outString_[7] = (char)(pC_->standby_current & 0x000000FF);		
+    
+    pC_->calcTrinamicChecksum(pC_->outString_);
+    
+    status = pC_->writeReadController();
     
     // set microstep resolution (SAP)
     // format: <address> 05 8C <motor #> <resolution (0-8)(4 bytes)> <checksum>
     // # of microsteps will be 2^ustep_res steps per full step
-	pC_->outString_[0] = pC_->trinamicAddr;
-	pC_->outString_[1] = 0x05;
-	pC_->outString_[2] = 0x8C;
-	pC_->outString_[3] = (char)axisNo_;
-
-	// set 4 bytes of desired value (only need to set last byte, max is 255)
-	pC_->outString_[4] = 0; 
-	pC_->outString_[5] = 0; 
-	pC_->outString_[6] = 0; 
-	pC_->outString_[7] = (char)(pC_->ustep_res & 0x000000FF);		
-
-	pC_->calcTrinamicChecksum(pC_->outString_);
-
-	status = pC_->writeReadController();
+    pC_->outString_[0] = pC_->trinamicAddr;
+    pC_->outString_[1] = 0x05;
+    pC_->outString_[2] = 0x8C;
+    pC_->outString_[3] = (char)axisNo_;
+    
+    // set 4 bytes of desired value (only need to set last byte, max is 255)
+    pC_->outString_[4] = 0; 
+    pC_->outString_[5] = 0; 
+    pC_->outString_[6] = 0; 
+    pC_->outString_[7] = (char)(pC_->ustep_res & 0x000000FF);		
+    
+    pC_->calcTrinamicChecksum(pC_->outString_);
+    
+    status = pC_->writeReadController();
     
     // enable left limit switch
     // format: <address> 05 0D <motor #> <0 (enable) (4 bytes)> <checksum>
-	pC_->outString_[0] = pC_->trinamicAddr;
-	pC_->outString_[1] = 0x05;
-	pC_->outString_[2] = 0x0D;
-	pC_->outString_[3] = (char)axisNo_;
-
-	// set 4 bytes of desired value (only need to set last byte, max is 255)
-	pC_->outString_[4] = 0; 
-	pC_->outString_[5] = 0; 
-	pC_->outString_[6] = 0; 
-	pC_->outString_[7] = 0; 
-
-	pC_->calcTrinamicChecksum(pC_->outString_);
-
-	status = pC_->writeReadController();
+    pC_->outString_[0] = pC_->trinamicAddr;
+    pC_->outString_[1] = 0x05;
+    pC_->outString_[2] = 0x0D;
+    pC_->outString_[3] = (char)axisNo_;
+    
+    // set 4 bytes of desired value (only need to set last byte, max is 255)
+    pC_->outString_[4] = 0; 
+    pC_->outString_[5] = 0; 
+    pC_->outString_[6] = 0; 
+    pC_->outString_[7] = 0; 
+    
+    pC_->calcTrinamicChecksum(pC_->outString_);
+    
+    status = pC_->writeReadController();
     
     // enable right limit switch
     // format: <address> 05 0C <motor #> <0 (enable) (4 bytes)> <checksum>
-	pC_->outString_[0] = pC_->trinamicAddr;
-	pC_->outString_[1] = 0x05;
-	pC_->outString_[2] = 0x0C;
-	pC_->outString_[3] = (char)axisNo_;
-
-	// set 4 bytes of desired value (only need to set last byte, max is 255)
-	pC_->outString_[4] = 0; 
-	pC_->outString_[5] = 0; 
-	pC_->outString_[6] = 0; 
-	pC_->outString_[7] = 0; 
-
-	pC_->calcTrinamicChecksum(pC_->outString_);
-
-	status = pC_->writeReadController();
+    pC_->outString_[0] = pC_->trinamicAddr;
+    pC_->outString_[1] = 0x05;
+    pC_->outString_[2] = 0x0C;
+    pC_->outString_[3] = (char)axisNo_;
+    
+    // set 4 bytes of desired value (only need to set last byte, max is 255)
+    pC_->outString_[4] = 0; 
+    pC_->outString_[5] = 0; 
+    pC_->outString_[6] = 0; 
+    pC_->outString_[7] = 0; 
+    
+    pC_->calcTrinamicChecksum(pC_->outString_);
+    
+    status = pC_->writeReadController();
 }
 
 /** Reports on status of the axis
@@ -359,62 +363,63 @@ TrinamicAxis::TrinamicAxis(TrinamicController *pC, int axisNo)
   */
 void TrinamicAxis::report(FILE *fp, int level)
 {
-	if (level > 0) {
-		fprintf(fp, "  axis %d\n", axisNo_);
-	}
-
-	// Call the base class method
-	asynMotorAxis::report(fp, level);
+    if (level > 0) {
+        fprintf(fp, "  axis %d\n", axisNo_);
+    }
+    
+    // Call the base class method
+    asynMotorAxis::report(fp, level);
 }
 
-// function to get limits since done twice and need to read before moving
+// helper function to get limits since used twice and need to read before moving
 asynStatus TrinamicAxis::getLimits()
 {
     asynStatus status;
     int leftLimit, rightLimit;
+    
+    // Read the limit status
+    // get lim status: <address> 06 0A/0B (right/left) <motor #> 00 00 00 00 <checksum>
 
-	// Read the limit status
-	// get lim status: <address> 06 0A/0B (right/left) <motor #> 00 00 00 00 <checksum>
-	// get right limit
-	pC_->outString_[0] = pC_->trinamicAddr;
-	pC_->outString_[1] = 0x06;
-	pC_->outString_[2] = 0x0A;
-	pC_->outString_[3] = (char)axisNo_;
-
-	// set 4 bytes of desired value (all 0's for read)
-	pC_->outString_[4] = 0x00;
-	pC_->outString_[5] = 0x00;
-	pC_->outString_[6] = 0x00;
-	pC_->outString_[7] = 0x00;
-		
-	pC_->calcTrinamicChecksum(pC_->outString_);
-	
-	status = pC_->writeReadController();
-	if (status) return status;
-	// 1 means switch is activated
-	rightLimit = (int) (pC_->inString_[7] & 0x000000FF);
-	setIntegerParam(pC_->motorStatusHighLimit_, rightLimit);
-
-	// get left limit
-	pC_->outString_[0] = pC_->trinamicAddr;
-	pC_->outString_[1] = 0x06;
-	pC_->outString_[2] = 0x0B;
-	pC_->outString_[3] = (char)axisNo_;
-
-	// set 4 bytes of desired value (all 0's for read)
-	pC_->outString_[4] = 0x00;
-	pC_->outString_[5] = 0x00;
-	pC_->outString_[6] = 0x00;
-	pC_->outString_[7] = 0x00;
-		
-	pC_->calcTrinamicChecksum(pC_->outString_);
-	
-	status = pC_->writeReadController();
-	if (status) return status;
-	// 1 means switch is activated
-	leftLimit = (int) (pC_->inString_[7] & 0x000000FF);
-	setIntegerParam(pC_->motorStatusLowLimit_, leftLimit);
-
+    // get right limit
+    pC_->outString_[0] = pC_->trinamicAddr;
+    pC_->outString_[1] = 0x06;
+    pC_->outString_[2] = 0x0A;
+    pC_->outString_[3] = (char)axisNo_;
+    
+    // set 4 bytes of desired value (all 0's for read)
+    pC_->outString_[4] = 0x00;
+    pC_->outString_[5] = 0x00;
+    pC_->outString_[6] = 0x00;
+    pC_->outString_[7] = 0x00;
+    	
+    pC_->calcTrinamicChecksum(pC_->outString_);
+    
+    status = pC_->writeReadController();
+    if (status) return status;
+    // 1 means switch is activated
+    rightLimit = (int) (pC_->inString_[7] & 0x000000FF);
+    setIntegerParam(pC_->motorStatusHighLimit_, rightLimit);
+    
+    // get left limit
+    pC_->outString_[0] = pC_->trinamicAddr;
+    pC_->outString_[1] = 0x06;
+    pC_->outString_[2] = 0x0B;
+    pC_->outString_[3] = (char)axisNo_;
+    
+    // set 4 bytes of desired value (all 0's for read)
+    pC_->outString_[4] = 0x00;
+    pC_->outString_[5] = 0x00;
+    pC_->outString_[6] = 0x00;
+    pC_->outString_[7] = 0x00;
+    	
+    pC_->calcTrinamicChecksum(pC_->outString_);
+    
+    status = pC_->writeReadController();
+    if (status) return status;
+    // 1 means switch is activated
+    leftLimit = (int) (pC_->inString_[7] & 0x000000FF);
+    setIntegerParam(pC_->motorStatusLowLimit_, leftLimit);
+    
     // // cancel move (stop) if limit hit
     // // default behavior is that if limit is lifted, move will continue
     // // if ((rightLimit || leftLimit) && !(pastLeftLimit || pastRightLimit)) comStatus = stop(0);
@@ -426,95 +431,94 @@ asynStatus TrinamicAxis::getLimits()
 
 asynStatus TrinamicAxis::sendAccelAndVelocity(double acceleration, double velocity)
 {
-	asynStatus status;
-
-	unsigned int accel_int;
+    asynStatus status;
+    
+    unsigned int accel_int;
     int vel_int;
-    // TODO: dont pass pulse and ramp dive to functions, they are controller methods	
-	// convert velocity and accel from microsteps to controller units
-	vel_int = pC_->vel_steps_to_int(velocity, pC_->pulse_div);	
-	accel_int = pC_->accel_steps_to_int(acceleration, pC_->pulse_div, pC_->ramp_div);	
-
-	// set pulse divisor
-	// format: <address> 05 9A <motor #> <value (4)> <checksum>
-	pC_->outString_[0] = pC_->trinamicAddr;
-	pC_->outString_[1] = 0x05;
-	pC_->outString_[2] = 0x9A;
-	pC_->outString_[3] = (char)axisNo_;
-
-	// set 4 bytes of desired value
-	pC_->outString_[4] = (char)((pC_->pulse_div & 0xFF000000) >> 24);
-	pC_->outString_[5] = (char)((pC_->pulse_div & 0x00FF0000) >> 16);
-	pC_->outString_[6] = (char)((pC_->pulse_div & 0x0000FF00) >> 8);
-	pC_->outString_[7] = (char)(pC_->pulse_div & 0x000000FF);		
-
-	// set checksum
-	pC_->calcTrinamicChecksum(pC_->outString_);
-
-	status = pC_->writeReadController();
-	
-	// set ramp divisor
-	// format: <address> 05 99 <motor #> <value (4)> <checksum>
-	pC_->outString_[0] = pC_->trinamicAddr;
-	pC_->outString_[1] = 0x05;
-	pC_->outString_[2] = 0x99;
-	pC_->outString_[3] = (char)axisNo_;
-
-	// set 4 bytes of desired value
-	pC_->outString_[4] = (char)((pC_->ramp_div & 0xFF000000) >> 24);
-	pC_->outString_[5] = (char)((pC_->ramp_div & 0x00FF0000) >> 16);
-	pC_->outString_[6] = (char)((pC_->ramp_div & 0x0000FF00) >> 8);
-	pC_->outString_[7] = (char)(pC_->ramp_div & 0x000000FF);		
-	
-	pC_->calcTrinamicChecksum(pC_->outString_);
-
-	status = pC_->writeReadController();
-	
-    // TODO: check if vel in range (?) -> dont think so because defaults to max
-	// set vel: <address> 05 04 <motor #> <vel (4)> <checksum>
-	pC_->outString_[0] = pC_->trinamicAddr;
-	pC_->outString_[1] = 0x05;
-	pC_->outString_[2] = 0x04;
-	pC_->outString_[3] = (char)axisNo_;
-
-	// set 4 bytes of desired value
-	pC_->outString_[4] = (char)((vel_int & 0xFF000000) >> 24);
-	pC_->outString_[5] = (char)((vel_int & 0x00FF0000) >> 16);
-	pC_->outString_[6] = (char)((vel_int & 0x0000FF00) >> 8);
-	pC_->outString_[7] = (char)(vel_int & 0x000000FF);		
-	
-	pC_->calcTrinamicChecksum(pC_->outString_);
-
-	status = pC_->writeReadController();
-	
-	// set accl: <address> 05 05 <motor #> <accel (4)> <checksum>
-	pC_->outString_[0] = pC_->trinamicAddr;
-	pC_->outString_[1] = 0x05;
-	pC_->outString_[2] = 0x05;
-	pC_->outString_[3] = (char)axisNo_;
-
-	// set 4 bytes of desired value
-	pC_->outString_[4] = (char)((accel_int & 0xFF000000) >> 24);
-	pC_->outString_[5] = (char)((accel_int & 0x00FF0000) >> 16);
-	pC_->outString_[6] = (char)((accel_int & 0x0000FF00) >> 8);
-	pC_->outString_[7] = (char)(accel_int & 0x000000FF);		
-	
-	pC_->calcTrinamicChecksum(pC_->outString_);
-
-	status = pC_->writeReadController();
-
-	return status;
+    
+    // convert velocity and accel from microsteps to controller units
+    vel_int = pC_->vel_steps_to_int(velocity, pC_->pulse_div);	
+    accel_int = pC_->accel_steps_to_int(acceleration, pC_->pulse_div, pC_->ramp_div);	
+    
+    // set pulse divisor
+    // format: <address> 05 9A <motor #> <value (4)> <checksum>
+    pC_->outString_[0] = pC_->trinamicAddr;
+    pC_->outString_[1] = 0x05;
+    pC_->outString_[2] = 0x9A;
+    pC_->outString_[3] = (char)axisNo_;
+    
+    // set 4 bytes of desired value
+    pC_->outString_[4] = (char)((pC_->pulse_div & 0xFF000000) >> 24);
+    pC_->outString_[5] = (char)((pC_->pulse_div & 0x00FF0000) >> 16);
+    pC_->outString_[6] = (char)((pC_->pulse_div & 0x0000FF00) >> 8);
+    pC_->outString_[7] = (char)(pC_->pulse_div & 0x000000FF);		
+    
+    // set checksum
+    pC_->calcTrinamicChecksum(pC_->outString_);
+    
+    status = pC_->writeReadController();
+    
+    // set ramp divisor
+    // format: <address> 05 99 <motor #> <value (4)> <checksum>
+    pC_->outString_[0] = pC_->trinamicAddr;
+    pC_->outString_[1] = 0x05;
+    pC_->outString_[2] = 0x99;
+    pC_->outString_[3] = (char)axisNo_;
+    
+    // set 4 bytes of desired value
+    pC_->outString_[4] = (char)((pC_->ramp_div & 0xFF000000) >> 24);
+    pC_->outString_[5] = (char)((pC_->ramp_div & 0x00FF0000) >> 16);
+    pC_->outString_[6] = (char)((pC_->ramp_div & 0x0000FF00) >> 8);
+    pC_->outString_[7] = (char)(pC_->ramp_div & 0x000000FF);		
+    
+    pC_->calcTrinamicChecksum(pC_->outString_);
+    
+    status = pC_->writeReadController();
+    
+    // set vel: <address> 05 04 <motor #> <vel (4)> <checksum>
+    pC_->outString_[0] = pC_->trinamicAddr;
+    pC_->outString_[1] = 0x05;
+    pC_->outString_[2] = 0x04;
+    pC_->outString_[3] = (char)axisNo_;
+    
+    // set 4 bytes of desired value
+    pC_->outString_[4] = (char)((vel_int & 0xFF000000) >> 24);
+    pC_->outString_[5] = (char)((vel_int & 0x00FF0000) >> 16);
+    pC_->outString_[6] = (char)((vel_int & 0x0000FF00) >> 8);
+    pC_->outString_[7] = (char)(vel_int & 0x000000FF);		
+    
+    pC_->calcTrinamicChecksum(pC_->outString_);
+    
+    status = pC_->writeReadController();
+    
+    // set accl: <address> 05 05 <motor #> <accel (4)> <checksum>
+    pC_->outString_[0] = pC_->trinamicAddr;
+    pC_->outString_[1] = 0x05;
+    pC_->outString_[2] = 0x05;
+    pC_->outString_[3] = (char)axisNo_;
+    
+    // set 4 bytes of desired value
+    pC_->outString_[4] = (char)((accel_int & 0xFF000000) >> 24);
+    pC_->outString_[5] = (char)((accel_int & 0x00FF0000) >> 16);
+    pC_->outString_[6] = (char)((accel_int & 0x0000FF00) >> 8);
+    pC_->outString_[7] = (char)(accel_int & 0x000000FF);		
+    
+    pC_->calcTrinamicChecksum(pC_->outString_);
+    
+    status = pC_->writeReadController();
+    
+    return status;
 }
 
 asynStatus TrinamicAxis::move(double position, int relative, double minVelocity, double maxVelocity,
-		double acceleration)
+        double acceleration)
 {
-	asynStatus status;
-
+    asynStatus status;
+    
     int leftLimit, rightLimit;
     int targetDir;
     double curPosition;
-	
+    
     // abort move if out of range
     if ((position < -2147483648) || (position > 2147483648)) {
         // TODO: add asyntrace message
@@ -534,219 +538,225 @@ asynStatus TrinamicAxis::move(double position, int relative, double minVelocity,
     else {
         targetDir = (position >= curPosition)? 1 : -1;
     }
-
-    if ((leftLimit && (targetDir == -1)) || (rightLimit && (targetDir == 1))) {return status;}
-
-	// set acceleration and velocity:
-	status = sendAccelAndVelocity(acceleration, maxVelocity);
     
-    // convert position to int
-	int pos_int = NINT(position);
-
-	// send move command:
-	// TODO	
-	if (relative) {
-		// move rel: <address> 04 01 <motor #> <rel position (4)> <checksum>
-		pC_->outString_[0] = pC_->trinamicAddr;
-		pC_->outString_[1] = 0x04;
-		pC_->outString_[2] = 0x01;
-		pC_->outString_[3] = (char)axisNo_;
-	}
-	else
-	{
-		// move abs: <address> 04 00 <motor #> <position (4)> <checksum> 
-		pC_->outString_[0] = pC_->trinamicAddr;
-		pC_->outString_[1] = 0x04;
-		pC_->outString_[2] = 0x00;
-		pC_->outString_[3] = (char)axisNo_;
-	}
-	
-	// set 4 bytes of desired value
-	pC_->outString_[4] = (char)((pos_int & 0xFF000000) >> 24);
-	pC_->outString_[5] = (char)((pos_int & 0x00FF0000) >> 16);
-	pC_->outString_[6] = (char)((pos_int & 0x0000FF00) >> 8);
-	pC_->outString_[7] = (char)(pos_int & 0x000000FF);		
-		
-	pC_->calcTrinamicChecksum(pC_->outString_);
-	
-	status = pC_->writeReadController();
+    if ((leftLimit && (targetDir == -1)) || (rightLimit && (targetDir == 1))) {return status;}
+    
+    // set acceleration and velocity:
+    status = sendAccelAndVelocity(acceleration, maxVelocity);
+    
+    // convert position to controller units 
+    int pos_int = NINT(position);
+    
+    // send move command:
+    if (relative) {
+    	// move rel: <address> 04 01 <motor #> <rel position (4)> <checksum>
+        pC_->outString_[0] = pC_->trinamicAddr;
+        pC_->outString_[1] = 0x04;
+        pC_->outString_[2] = 0x01;
+        pC_->outString_[3] = (char)axisNo_;
+    }
+    else
+    {
+        // move abs: <address> 04 00 <motor #> <position (4)> <checksum> 
+        pC_->outString_[0] = pC_->trinamicAddr;
+        pC_->outString_[1] = 0x04;
+        pC_->outString_[2] = 0x00;
+        pC_->outString_[3] = (char)axisNo_;
+    }
+    
+    // set 4 bytes of desired value
+    pC_->outString_[4] = (char)((pos_int & 0xFF000000) >> 24);
+    pC_->outString_[5] = (char)((pos_int & 0x00FF0000) >> 16);
+    pC_->outString_[6] = (char)((pos_int & 0x0000FF00) >> 8);
+    pC_->outString_[7] = (char)(pos_int & 0x000000FF);		
+    	
+    pC_->calcTrinamicChecksum(pC_->outString_);
+    
+    status = pC_->writeReadController();
+    // TODO: remove:
     if (!status) startedMove = 1;
-	return status;
-
+    return status;
+    
 }
 
 asynStatus TrinamicAxis::home(double minVelocity, double maxVelocity, 
 		double acceleration, int forwards)
 {
-	asynStatus status;
-	// home (aka start reference search RFS): <address> 0D 00 <motor #> <0 (4)> <checksum>
-	pC_->homingInProg = 1;
-  	// status = sendAccelAndVelocity(acceleration, maxVelocity);
+    asynStatus status;
+    // home (aka start reference search RFS): <address> 0D 00 <motor #> <0 (4)> <checksum>
+    pC_->homingInProg = 1;
+    
+    // TODO: controller acts weird if send accel and vel before homing
+    // status = sendAccelAndVelocity(acceleration, maxVelocity);
     
     // set reference search mode: <address> 05 05 <motor #> <accel (4)> <checksum>
-	pC_->outString_[0] = pC_->trinamicAddr;
-	pC_->outString_[1] = 0x05;
-	pC_->outString_[2] = 0xC1;
-	pC_->outString_[3] = (char)axisNo_;
+    pC_->outString_[0] = pC_->trinamicAddr;
+    pC_->outString_[1] = 0x05;
+    pC_->outString_[2] = 0xC1;
+    pC_->outString_[3] = (char)axisNo_;
     
     if (forwards) {
-        // search forwards
-	    pC_->outString_[4] = 0x00; 
-	    pC_->outString_[5] = 0x00; 
-	    pC_->outString_[6] = 0x00; 
-	    pC_->outString_[7] = 0x41; 
+        // set search mode to find right switch 
+        pC_->outString_[4] = 0x00; 
+        pC_->outString_[5] = 0x00; 
+        pC_->outString_[6] = 0x00; 
+        pC_->outString_[7] = 0x41; 
     }
     else {
-        //search reverse
-	    pC_->outString_[4] = 0x00; 
-	    pC_->outString_[5] = 0x00; 
-	    pC_->outString_[6] = 0x00; 
-	    pC_->outString_[7] = 0x01; 
+        // set search mode to find left switch 
+        pC_->outString_[4] = 0x00; 
+        pC_->outString_[5] = 0x00; 
+        pC_->outString_[6] = 0x00; 
+        pC_->outString_[7] = 0x01; 
     }
-	
-	pC_->calcTrinamicChecksum(pC_->outString_);
-
-	status = pC_->writeReadController();
-
-	pC_->outString_[0] = pC_->trinamicAddr;
-	pC_->outString_[1] = 0x0D;
-	pC_->outString_[2] = 0x00;
-	pC_->outString_[3] = (char)axisNo_;
-
-	pC_->outString_[4] = 0x00;
-	pC_->outString_[5] = 0x00;
-	pC_->outString_[6] = 0x00;
-	pC_->outString_[7] = 0x00;
-		
-	pC_->calcTrinamicChecksum(pC_->outString_);
-
-  	status = pC_->writeReadController();
-  	return status;
+    
+    pC_->calcTrinamicChecksum(pC_->outString_);
+    
+    status = pC_->writeReadController();
+    
+    pC_->outString_[0] = pC_->trinamicAddr;
+    pC_->outString_[1] = 0x0D;
+    pC_->outString_[2] = 0x00;
+    pC_->outString_[3] = (char)axisNo_;
+    
+    pC_->outString_[4] = 0x00;
+    pC_->outString_[5] = 0x00;
+    pC_->outString_[6] = 0x00;
+    pC_->outString_[7] = 0x00;
+    	
+    pC_->calcTrinamicChecksum(pC_->outString_);
+    
+    status = pC_->writeReadController();
+    return status;
 }
 
 asynStatus TrinamicAxis::moveVelocity(double minVelocity, double maxVelocity, double acceleration)
 {
-	asynStatus status;
-	// send accel and velocity
-	double absVelocity = (maxVelocity >= 0.) ? maxVelocity : -1*maxVelocity;
-	
-	status = sendAccelAndVelocity(acceleration, absVelocity);
-
-	int vel_int = pC_->vel_steps_to_int(absVelocity, pC_->pulse_div);	
-    // if (vel_int < 0) vel_int = (-1)*vel_int;
-	
-	if (maxVelocity >= 0) {
-		pC_->outString_[0] = pC_->trinamicAddr;
-		pC_->outString_[1] = 0x01;
-		pC_->outString_[2] = 0x00;
-		pC_->outString_[3] = (char)axisNo_;
-	}
-	else
-	{
-		pC_->outString_[0] = pC_->trinamicAddr;
-		pC_->outString_[1] = 0x02;
-		pC_->outString_[2] = 0x00;
-		pC_->outString_[3] = (char)axisNo_;
-	}
-	
-	// set 4 bytes of desired value
-	pC_->outString_[4] = (char)((vel_int & 0xFF000000) >> 24);
-	pC_->outString_[5] = (char)((vel_int & 0x00FF0000) >> 16);
-	pC_->outString_[6] = (char)((vel_int & 0x0000FF00) >> 8);
-	pC_->outString_[7] = (char)( vel_int & 0x000000FF);		
-	
-	pC_->calcTrinamicChecksum(pC_->outString_);
-
+    asynStatus status;
+    double absVelocity = (maxVelocity >= 0.) ? maxVelocity : -1*maxVelocity;
+    
+    // send accel and velocity
+    status = sendAccelAndVelocity(acceleration, absVelocity);
+    
+    int vel_int = pC_->vel_steps_to_int(absVelocity, pC_->pulse_div);	
+    
+    // if velocity negative, send rotate left (ROL) command, else send rotate right (ROR)
+    // format: <address> 01/02 (ROL/ROR) 00 <motor #> <velocity (4)> <checksum>
+    if (maxVelocity >= 0) {
+        pC_->outString_[0] = pC_->trinamicAddr;
+        pC_->outString_[1] = 0x01;
+        pC_->outString_[2] = 0x00;
+        pC_->outString_[3] = (char)axisNo_;
+    }
+    else
+    {
+        pC_->outString_[0] = pC_->trinamicAddr;
+        pC_->outString_[1] = 0x02;
+        pC_->outString_[2] = 0x00;
+        pC_->outString_[3] = (char)axisNo_;
+    }
+    
+    // set 4 bytes of desired value
+    pC_->outString_[4] = (char)((vel_int & 0xFF000000) >> 24);
+    pC_->outString_[5] = (char)((vel_int & 0x00FF0000) >> 16);
+    pC_->outString_[6] = (char)((vel_int & 0x0000FF00) >> 8);
+    pC_->outString_[7] = (char)( vel_int & 0x000000FF);		
+    
+    pC_->calcTrinamicChecksum(pC_->outString_);
+    
     pC_->lock();
-	status = pC_->writeReadController();
+    status = pC_->writeReadController();
     epicsThreadSleep(0.1);
     pC_->unlock();
     if (!status) startedMove = 1;
-
-	return status;
+    
+    return status;
 }
 
 asynStatus TrinamicAxis::stop(double acceleration)
 {
     unsigned int accel_int;
-
-	asynStatus status;
-	
+    
+    asynStatus status;
+    
     accel_int = pC_->accel_steps_to_int(acceleration, pC_->pulse_div, pC_->ramp_div);	
-	
+    
     // set accl: <address> 05 05 <motor #> <accel (4)> <checksum>
-	pC_->outString_[0] = pC_->trinamicAddr;
-	pC_->outString_[1] = 0x05;
-	pC_->outString_[2] = 0x05;
-	pC_->outString_[3] = (char)axisNo_;
-
-	// set 4 bytes of desired value
-	pC_->outString_[4] = (char)((accel_int & 0xFF000000) >> 24);
-	pC_->outString_[5] = (char)((accel_int & 0x00FF0000) >> 16);
-	pC_->outString_[6] = (char)((accel_int & 0x0000FF00) >> 8);
-	pC_->outString_[7] = (char)(accel_int & 0x000000FF);		
-	
-	pC_->calcTrinamicChecksum(pC_->outString_);
-
-	status = pC_->writeReadController();
+    pC_->outString_[0] = pC_->trinamicAddr;
+    pC_->outString_[1] = 0x05;
+    pC_->outString_[2] = 0x05;
+    pC_->outString_[3] = (char)axisNo_;
+    
+    // set 4 bytes of accel 
+    pC_->outString_[4] = (char)((accel_int & 0xFF000000) >> 24);
+    pC_->outString_[5] = (char)((accel_int & 0x00FF0000) >> 16);
+    pC_->outString_[6] = (char)((accel_int & 0x0000FF00) >> 8);
+    pC_->outString_[7] = (char)(accel_int & 0x000000FF);		
+    
+    pC_->calcTrinamicChecksum(pC_->outString_);
+    
+    status = pC_->writeReadController();
     // if (status) return status;
-
-	// stop: <address> 03 00 <motor #> 00 00 00 00 <checksum>
-	pC_->outString_[0] = pC_->trinamicAddr;
-	pC_->outString_[1] = 0x03;
-	pC_->outString_[2] = 0x00;
-	pC_->outString_[3] = (char)axisNo_;
-
-	// set 4 bytes of desired value
-	pC_->outString_[4] = 0x00;
-	pC_->outString_[5] = 0x00;
-	pC_->outString_[6] = 0x00;
-	pC_->outString_[7] = 0x00;
-		
-	pC_->calcTrinamicChecksum(pC_->outString_);
-
-	status = pC_->writeReadController();
-	return status;
+    
+    // stop: <address> 03 00 <motor #> 00 00 00 00 <checksum>
+    pC_->outString_[0] = pC_->trinamicAddr;
+    pC_->outString_[1] = 0x03;
+    pC_->outString_[2] = 0x00;
+    pC_->outString_[3] = (char)axisNo_;
+    
+    // 4 bytes don't care 
+    pC_->outString_[4] = 0x00;
+    pC_->outString_[5] = 0x00;
+    pC_->outString_[6] = 0x00;
+    pC_->outString_[7] = 0x00;
+    	
+    pC_->calcTrinamicChecksum(pC_->outString_);
+    
+    status = pC_->writeReadController();
+    return status;
 }
 
 asynStatus TrinamicAxis::setPosition(double position)
 {
-	asynStatus status;
-	
+    asynStatus status;
+    
     // send stop command, motor moves when setting position otherwise
     pC_->outString_[0] = pC_->trinamicAddr;
-	pC_->outString_[1] = 0x03;
-	pC_->outString_[2] = 0x00;
-	pC_->outString_[3] = (char)axisNo_;
-
-	// set 4 bytes of desired value
-	pC_->outString_[4] = 0x00;
-	pC_->outString_[5] = 0x00;
-	pC_->outString_[6] = 0x00;
-	pC_->outString_[7] = 0x00;
-		
-	pC_->calcTrinamicChecksum(pC_->outString_);
-
-	status = pC_->writeReadController();
-
-	int pos_int = NINT(position);
-	
-	// set pos: <address> 05 01 <motor #> <position (4)> <checksum> 
-	pC_->outString_[0] = pC_->trinamicAddr;
-	pC_->outString_[1] = 0x05;
-	pC_->outString_[2] = 0x01;
-	pC_->outString_[3] = (char)axisNo_;
-
-	// set 4 bytes of desired value
-	pC_->outString_[4] = (char)((pos_int & 0xFF000000) >> 24);
-	pC_->outString_[5] = (char)((pos_int & 0x00FF0000) >> 16);
-	pC_->outString_[6] = (char)((pos_int & 0x0000FF00) >> 8);
-	pC_->outString_[7] = (char)(pos_int & 0x000000FF);		
-		
-	pC_->calcTrinamicChecksum(pC_->outString_);
-
-	status = pC_->writeReadController();
-	return status;
+    pC_->outString_[1] = 0x03;
+    pC_->outString_[2] = 0x00;
+    pC_->outString_[3] = (char)axisNo_;
+    
+    // 4 bytes don't care 
+    pC_->outString_[4] = 0x00;
+    pC_->outString_[5] = 0x00;
+    pC_->outString_[6] = 0x00;
+    pC_->outString_[7] = 0x00;
+    	
+    pC_->calcTrinamicChecksum(pC_->outString_);
+    
+    status = pC_->writeReadController();
+    if (status) {
+        return asynError;
+    }
+    
+    int pos_int = NINT(position);
+    
+    // set pos: <address> 05 01 <motor #> <position (4)> <checksum> 
+    pC_->outString_[0] = pC_->trinamicAddr;
+    pC_->outString_[1] = 0x05;
+    pC_->outString_[2] = 0x01;
+    pC_->outString_[3] = (char)axisNo_;
+    
+    // set 4 bytes of desired value
+    pC_->outString_[4] = (char)((pos_int & 0xFF000000) >> 24);
+    pC_->outString_[5] = (char)((pos_int & 0x00FF0000) >> 16);
+    pC_->outString_[6] = (char)((pos_int & 0x0000FF00) >> 8);
+    pC_->outString_[7] = (char)(pos_int & 0x000000FF);		
+    	
+    pC_->calcTrinamicChecksum(pC_->outString_);
+    
+    status = pC_->writeReadController();
+    return status;
 }
 
 /** Polls the axis.
@@ -759,60 +769,60 @@ asynStatus TrinamicAxis::setPosition(double position)
 
 asynStatus TrinamicAxis::poll(bool *moving)
 {
-	int done;
-	// int driveOn;
-	double position;
+    int done;
+    // int driveOn;
+    double position;
     int prevLeftLimit, prevRightLimit, curLeftLimit, curRightLimit; 
     int curDir;
     double accel;
-	
+    
     asynStatus comStatus;
-
-	// Read the current motor position
-	// get pos: <address> 06 01 <motor #> 00 00 00 00 <checksum> 
-	pC_->outString_[0] = pC_->trinamicAddr;
-	pC_->outString_[1] = 0x06;
-	pC_->outString_[2] = 0x01;
-	pC_->outString_[3] = (char)axisNo_;
-
-	// set 4 bytes of desired value (all 0's for read)
-	pC_->outString_[4] = 0x00;
-	pC_->outString_[5] = 0x00;
-	pC_->outString_[6] = 0x00;
-	pC_->outString_[7] = 0x00;
-		
-	pC_->calcTrinamicChecksum(pC_->outString_);
-	
-	comStatus = pC_->writeReadController();
-	if (comStatus) goto skip;
-	// value of a read is in bytes 4-7	
-	// response placed in pC_->inString_
-	// convert 8 bytes to double and set parameter
-	position = (double) (int)(
-		((pC_->inString_[4] << 24) & 0xFF000000) | 
-		((pC_->inString_[5] << 16) & 0x00FF0000) | 
-		((pC_->inString_[6] << 8 ) & 0x0000FF00) | 
-		((pC_->inString_[7] << 0 ) & 0x000000FF) );
-
-	setDoubleParam(pC_->motorPosition_, position);
-
-    // check if velocity != 0
-	pC_->outString_[0] = pC_->trinamicAddr;
-	pC_->outString_[1] = 0x06;
-	pC_->outString_[2] = 0x03;
-	pC_->outString_[3] = (char)axisNo_;
-
-	// set 4 bytes of desired value (all 0's for read)
-	pC_->outString_[4] = 0x00;
-	pC_->outString_[5] = 0x00;
-	pC_->outString_[6] = 0x00;
-	pC_->outString_[7] = 0x00;
-	
+    
+    // Read the current motor position
+    // get pos: <address> 06 01 <motor #> 00 00 00 00 <checksum> 
+    pC_->outString_[0] = pC_->trinamicAddr;
+    pC_->outString_[1] = 0x06;
+    pC_->outString_[2] = 0x01;
+    pC_->outString_[3] = (char)axisNo_;
+    
+    // set 4 bytes of desired value (all 0's for read)
+    pC_->outString_[4] = 0x00;
+    pC_->outString_[5] = 0x00;
+    pC_->outString_[6] = 0x00;
+    pC_->outString_[7] = 0x00;
+    	
     pC_->calcTrinamicChecksum(pC_->outString_);
-	
-	comStatus = pC_->writeReadController();
-	if (comStatus) goto skip;
-
+    
+    comStatus = pC_->writeReadController();
+    if (comStatus) goto skip;
+    // value of a read is in bytes 4-7	
+    // response placed in pC_->inString_
+    // convert 8 bytes to double and set parameter
+    position = (double) (int)(
+        ((pC_->inString_[4] << 24) & 0xFF000000) | 
+        ((pC_->inString_[5] << 16) & 0x00FF0000) | 
+        ((pC_->inString_[6] << 8 ) & 0x0000FF00) | 
+        ((pC_->inString_[7] << 0 ) & 0x000000FF) );
+    
+    setDoubleParam(pC_->motorPosition_, position);
+    
+    // check if velocity != 0
+    pC_->outString_[0] = pC_->trinamicAddr;
+    pC_->outString_[1] = 0x06;
+    pC_->outString_[2] = 0x03;
+    pC_->outString_[3] = (char)axisNo_;
+    
+    // set 4 bytes of desired value (all 0's for read)
+    pC_->outString_[4] = 0x00;
+    pC_->outString_[5] = 0x00;
+    pC_->outString_[6] = 0x00;
+    pC_->outString_[7] = 0x00;
+    
+    pC_->calcTrinamicChecksum(pC_->outString_);
+    
+    comStatus = pC_->writeReadController();
+    if (comStatus) goto skip;
+    
     // check if any velocity byte is not 0
     done = !(pC_->inString_[4] || pC_->inString_[5] || pC_->inString_[6] || pC_->inString_[7]);
     
@@ -826,38 +836,38 @@ asynStatus TrinamicAxis::poll(bool *moving)
     }
     
     // // check stand still error flag 
-	// pC_->outString_[0] = pC_->trinamicAddr;
-	// pC_->outString_[1] = 0x06;
-	// pC_->outString_[2] = 0xD0;
-	// pC_->outString_[3] = (char)axisNo_;
-
-	// // set 4 bytes of desired value (all 0's for read)
-	// pC_->outString_[4] = 0x00;
-	// pC_->outString_[5] = 0x00;
-	// pC_->outString_[6] = 0x00;
-	// pC_->outString_[7] = 0x00;
-	// 
+    // pC_->outString_[0] = pC_->trinamicAddr;
+    // pC_->outString_[1] = 0x06;
+    // pC_->outString_[2] = 0xD0;
+    // pC_->outString_[3] = (char)axisNo_;
+    
+    // // set 4 bytes of desired value (all 0's for read)
+    // pC_->outString_[4] = 0x00;
+    // pC_->outString_[5] = 0x00;
+    // pC_->outString_[6] = 0x00;
+    // pC_->outString_[7] = 0x00;
+    // 
     // pC_->calcTrinamicChecksum(pC_->outString_);
-	// 
-	// comStatus = pC_->writeReadController();
+    // 
+    // comStatus = pC_->writeReadController();
     // done = ((pC_->inString_[7] >> 7) & 0x00000001) ? 1 : 0;
         
     // // don't set done/moving flags in the period between successfully
     // // sending moves and reading nonzero velocity 
     // if (!startedMove) {
-	//     setIntegerParam(pC_->motorStatusDone_, done);
-	//     *moving = done ? false : true;	
+    //     setIntegerParam(pC_->motorStatusDone_, done);
+    //     *moving = done ? false : true;	
     // }
-	setIntegerParam(pC_->motorStatusDone_, done);
-	*moving = done ? false : true;	
-
-	// store previous values of limits
+    setIntegerParam(pC_->motorStatusDone_, done);
+    *moving = done ? false : true;	
+    
+    // store previous values of limits
     pC_->getIntegerParam((int)axisNo_, pC_->motorStatusLowLimit_, &prevLeftLimit);
     pC_->getIntegerParam((int)axisNo_, pC_->motorStatusHighLimit_, &prevRightLimit);
-
-	// Read the limit status
-	comStatus = getLimits();
-
+    
+    // Read the limit status
+    comStatus = getLimits();
+    
     // store current limit values
     // TODO (?) optimize by returning limit values in getLimits()? 
     pC_->getIntegerParam((int)axisNo_, pC_->motorStatusLowLimit_, &curLeftLimit);
@@ -866,7 +876,7 @@ asynStatus TrinamicAxis::poll(bool *moving)
     // cancel move (stop) if limit hit
     // default behavior is that if limit is lifted, move will continue
     pC_->getDoubleParam((int)axisNo_, pC_->motorAccel_, &accel);
-
+    
     if ((curRightLimit && !prevRightLimit && ((curDir == 1) || (done == 1))) ||
         (curLeftLimit && !prevLeftLimit && ((curDir == -1) || (done == 1)))) {
         // don't cancel motion if homing
@@ -876,11 +886,11 @@ asynStatus TrinamicAxis::poll(bool *moving)
         }
         comStatus = stop(accel);
     }
-
-	skip:
-	setIntegerParam(pC_->motorStatusProblem_, comStatus ? 1:0);
-	callParamCallbacks();
-	return comStatus ? asynError : asynSuccess;
+    
+    skip:
+    setIntegerParam(pC_->motorStatusProblem_, comStatus ? 1:0);
+    callParamCallbacks();
+    return comStatus ? asynError : asynSuccess;
 }
 
 /** Code for iocsh registration */
@@ -905,19 +915,19 @@ static const iocshArg * const TrinamicCreateControllerArgs[] = {&TrinamicCreateC
                                                              &TrinamicCreateControllerArg8,
                                                              &TrinamicCreateControllerArg9};
 static const iocshFuncDef TrinamicCreateControllerDef = {"TrinamicCreateController", 10, 
-	TrinamicCreateControllerArgs};
+    TrinamicCreateControllerArgs};
 
 static void TrinamicCreateControllerCallFunc(const iocshArgBuf *args)
 {
-	TrinamicCreateController(args[0].sval, args[1].sval, args[2].ival, args[3].ival, 
+    TrinamicCreateController(args[0].sval, args[1].sval, args[2].ival, args[3].ival, 
         args[4].ival, args[5].ival, args[6].ival, args[7].ival, args[8].ival, args[9].ival);
 }
 
 static void TrinamicRegister(void)
 {
-	iocshRegister(&TrinamicCreateControllerDef, TrinamicCreateControllerCallFunc);
+    iocshRegister(&TrinamicCreateControllerDef, TrinamicCreateControllerCallFunc);
 }
 
 extern "C" {
-	epicsExportRegistrar(TrinamicRegister);
+    epicsExportRegistrar(TrinamicRegister);
 }
