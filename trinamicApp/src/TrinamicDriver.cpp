@@ -465,10 +465,10 @@ asynStatus TrinamicAxis::sendAccelAndVelocity(double acceleration, double veloci
     pC_->outString_[3] = (char)axisNo_;
     
     // set 4 bytes of desired value
-    pC_->outString_[4] = (char)((pC_->pulse_div & 0xFF000000) >> 24);
-    pC_->outString_[5] = (char)((pC_->pulse_div & 0x00FF0000) >> 16);
-    pC_->outString_[6] = (char)((pC_->pulse_div & 0x0000FF00) >> 8);
-    pC_->outString_[7] = (char)(pC_->pulse_div & 0x000000FF);		
+    pC_->outString_[4] = (char)(pC_->pulse_div >> 24);
+    pC_->outString_[5] = (char)(pC_->pulse_div >> 16);
+    pC_->outString_[6] = (char)(pC_->pulse_div >> 8);
+    pC_->outString_[7] = (char)(pC_->pulse_div);		
     
     // set checksum
     pC_->calcTrinamicChecksum(pC_->outString_);
@@ -483,10 +483,10 @@ asynStatus TrinamicAxis::sendAccelAndVelocity(double acceleration, double veloci
     pC_->outString_[3] = (char)axisNo_;
     
     // set 4 bytes of desired value
-    pC_->outString_[4] = (char)((pC_->ramp_div & 0xFF000000) >> 24);
-    pC_->outString_[5] = (char)((pC_->ramp_div & 0x00FF0000) >> 16);
-    pC_->outString_[6] = (char)((pC_->ramp_div & 0x0000FF00) >> 8);
-    pC_->outString_[7] = (char)(pC_->ramp_div & 0x000000FF);		
+    pC_->outString_[4] = (char)(pC_->ramp_div >> 24);
+    pC_->outString_[5] = (char)(pC_->ramp_div >> 16);
+    pC_->outString_[6] = (char)(pC_->ramp_div >> 8);
+    pC_->outString_[7] = (char)(pC_->ramp_div);		
     
     pC_->calcTrinamicChecksum(pC_->outString_);
     
@@ -499,10 +499,10 @@ asynStatus TrinamicAxis::sendAccelAndVelocity(double acceleration, double veloci
     pC_->outString_[3] = (char)axisNo_;
     
     // set 4 bytes of desired value
-    pC_->outString_[4] = (char)((vel_int & 0xFF000000) >> 24);
-    pC_->outString_[5] = (char)((vel_int & 0x00FF0000) >> 16);
-    pC_->outString_[6] = (char)((vel_int & 0x0000FF00) >> 8);
-    pC_->outString_[7] = (char)(vel_int & 0x000000FF);		
+    pC_->outString_[4] = (char)(vel_int >> 24);
+    pC_->outString_[5] = (char)(vel_int >> 16);
+    pC_->outString_[6] = (char)(vel_int >> 8);
+    pC_->outString_[7] = (char)(vel_int);		
     
     pC_->calcTrinamicChecksum(pC_->outString_);
     
@@ -515,10 +515,10 @@ asynStatus TrinamicAxis::sendAccelAndVelocity(double acceleration, double veloci
     pC_->outString_[3] = (char)axisNo_;
     
     // set 4 bytes of desired value
-    pC_->outString_[4] = (char)((accel_int & 0xFF000000) >> 24);
-    pC_->outString_[5] = (char)((accel_int & 0x00FF0000) >> 16);
-    pC_->outString_[6] = (char)((accel_int & 0x0000FF00) >> 8);
-    pC_->outString_[7] = (char)(accel_int & 0x000000FF);		
+    pC_->outString_[4] = (char)(accel_int >> 24);
+    pC_->outString_[5] = (char)(accel_int >> 16);
+    pC_->outString_[6] = (char)(accel_int >> 8);
+    pC_->outString_[7] = (char)(accel_int);		
     
     pC_->calcTrinamicChecksum(pC_->outString_);
     
@@ -585,10 +585,10 @@ asynStatus TrinamicAxis::move(double position, int relative, double minVelocity,
     }
     
     // set 4 bytes of desired value
-    pC_->outString_[4] = (char)((pos_int & 0xFF000000) >> 24);
-    pC_->outString_[5] = (char)((pos_int & 0x00FF0000) >> 16);
-    pC_->outString_[6] = (char)((pos_int & 0x0000FF00) >> 8);
-    pC_->outString_[7] = (char)(pos_int & 0x000000FF);		
+    pC_->outString_[4] = (char)(pos_int >> 24);
+    pC_->outString_[5] = (char)(pos_int >> 16);
+    pC_->outString_[6] = (char)(pos_int >> 8);
+    pC_->outString_[7] = (char)(pos_int);		
     	
     pC_->calcTrinamicChecksum(pC_->outString_);
     
@@ -681,10 +681,10 @@ asynStatus TrinamicAxis::moveVelocity(double minVelocity, double maxVelocity, do
     }
     
     // set 4 bytes of desired value
-    pC_->outString_[4] = (char)((vel_int & 0xFF000000) >> 24);
-    pC_->outString_[5] = (char)((vel_int & 0x00FF0000) >> 16);
-    pC_->outString_[6] = (char)((vel_int & 0x0000FF00) >> 8);
-    pC_->outString_[7] = (char)( vel_int & 0x000000FF);		
+    pC_->outString_[4] = (char)(vel_int >> 24);
+    pC_->outString_[5] = (char)(vel_int >> 16);
+    pC_->outString_[6] = (char)(vel_int >> 8);
+    pC_->outString_[7] = (char)(vel_int);		
     
     pC_->calcTrinamicChecksum(pC_->outString_);
     
@@ -698,27 +698,27 @@ asynStatus TrinamicAxis::moveVelocity(double minVelocity, double maxVelocity, do
 
 asynStatus TrinamicAxis::stop(double acceleration)
 {
-    unsigned int accel_int;
     
     asynStatus status;
     
-    accel_int = pC_->accel_steps_to_int(acceleration, pC_->pulse_div, pC_->ramp_div);	
-    
-    // set accl: <address> 05 05 <motor #> <accel (4)> <checksum>
-    pC_->outString_[0] = pC_->trinamicAddr;
-    pC_->outString_[1] = 0x05;
-    pC_->outString_[2] = 0x05;
-    pC_->outString_[3] = (char)axisNo_;
-    
-    // set 4 bytes of accel 
-    pC_->outString_[4] = (char)((accel_int & 0xFF000000) >> 24);
-    pC_->outString_[5] = (char)((accel_int & 0x00FF0000) >> 16);
-    pC_->outString_[6] = (char)((accel_int & 0x0000FF00) >> 8);
-    pC_->outString_[7] = (char)(accel_int & 0x000000FF);		
-    
-    pC_->calcTrinamicChecksum(pC_->outString_);
-    
-    status = pC_->writeReadController();
+    // unsigned int accel_int;
+    // accel_int = pC_->accel_steps_to_int(acceleration, pC_->pulse_div, pC_->ramp_div);	
+    // 
+    // // set accl: <address> 05 05 <motor #> <accel (4)> <checksum>
+    // pC_->outString_[0] = pC_->trinamicAddr;
+    // pC_->outString_[1] = 0x05;
+    // pC_->outString_[2] = 0x05;
+    // pC_->outString_[3] = (char)axisNo_;
+    // 
+    // // set 4 bytes of accel 
+    // pC_->outString_[4] = (char)((accel_int & 0xFF000000) >> 24);
+    // pC_->outString_[5] = (char)((accel_int & 0x00FF0000) >> 16);
+    // pC_->outString_[6] = (char)((accel_int & 0x0000FF00) >> 8);
+    // pC_->outString_[7] = (char)(accel_int & 0x000000FF);		
+    // 
+    // pC_->calcTrinamicChecksum(pC_->outString_);
+    // 
+    // status = pC_->writeReadController();
     // if (status) return status;
     
     // stop: <address> 03 00 <motor #> 00 00 00 00 <checksum>
@@ -771,10 +771,10 @@ asynStatus TrinamicAxis::setPosition(double position)
     pC_->outString_[3] = (char)axisNo_;
     
     // set 4 bytes of desired value
-    pC_->outString_[4] = (char)((pos_int & 0xFF000000) >> 24);
-    pC_->outString_[5] = (char)((pos_int & 0x00FF0000) >> 16);
-    pC_->outString_[6] = (char)((pos_int & 0x0000FF00) >> 8);
-    pC_->outString_[7] = (char)(pos_int & 0x000000FF);		
+    pC_->outString_[4] = (char)(pos_int >> 24);
+    pC_->outString_[5] = (char)(pos_int >> 16);
+    pC_->outString_[6] = (char)(pos_int >> 8);
+    pC_->outString_[7] = (char)(pos_int);		
     	
     pC_->calcTrinamicChecksum(pC_->outString_);
     
