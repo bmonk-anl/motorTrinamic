@@ -104,14 +104,14 @@ int TrinamicController::vel_steps_to_int (double velocity, unsigned int pulse_di
     v_double = 0.004096 * (double)(1UL << pulse_div) * velocity;
 
     if (v_double > 2047) {
-        v_double = 2047;
         asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, 
-    	    "Commanded velocity of %f (%f after conversion) above max value, writing max velocity\n", velocity, v_double);
+    	    "Commanded velocity of %f (%d after conversion) above max value, writing max velocity\n", velocity, (int)v_double);
+        v_double = 2047;
     }
     else if (v_double < -2047) {
-        v_double = -2047;
         asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, 
-    	    "Commanded velocity below min value, writing min velocity");
+    	    "Commanded velocity of %f (%d after conversion) below min value, writing min velocity\n", velocity, (int)v_double);
+        v_double = -2047;
     }
     
     v_int = NINT(v_double);
@@ -127,18 +127,19 @@ unsigned int TrinamicController::accel_steps_to_int (double acceleration, unsign
     unsigned int a_int;
     
     a_double = (3.90625e-15) * (double)(1UL << (ramp_div+pulse_div+29)) * acceleration;
-    a_int = NINT(a_double);
     
-    if (a_int > 2047) {
-        a_int = 2047;
+    if (a_double > 2047) {
         asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, 
-    	    "Commanded acceleration above max value, writing max acceleration\n");
+    	    "Commanded acceleration of %f (%d after conversion) above max value, writing max acceleration\n", acceleration, (int)a_double);
+        a_double = 2047;
     }
-    else if (a_int < 1) {
+    else if (a_double < 1) {
         asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, 
-    	    "Commanded acceleration below min value, writing min acceleration\n");
-        a_int = 1;
+    	    "Commanded acceleration of %f (%d after conversion) below min value, writing min acceleration\n", acceleration, (int)a_double);
+        a_double = 1;
     }
+    
+    a_int = NINT(a_double);
     
     return a_int;
 }
@@ -602,7 +603,7 @@ asynStatus TrinamicAxis::home(double minVelocity, double maxVelocity,
 {
     asynStatus status;
     // home (aka start reference search RFS): <address> 0D 00 <motor #> <0 (4)> <checksum>
-    pC_->homingInProg = 1;
+    this->homingInProg = 1;
     
     // TODO: controller acts weird if send accel and vel before homing
     // status = sendAccelAndVelocity(acceleration, maxVelocity);
@@ -879,8 +880,8 @@ asynStatus TrinamicAxis::poll(bool *moving)
     if ((curRightLimit && !prevRightLimit && ((curDir == 1) || (done == 1))) ||
         (curLeftLimit && !prevLeftLimit && ((curDir == -1) || (done == 1)))) {
         // don't cancel motion if homing
-        if (pC_->homingInProg) {
-            pC_->homingInProg = 0;
+        if (this->homingInProg) {
+            this->homingInProg = 0;
             goto skip;
         }
         comStatus = stop(accel);

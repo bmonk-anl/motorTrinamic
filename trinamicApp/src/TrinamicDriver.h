@@ -1,17 +1,13 @@
 // TODO: 
-// dont move if velocity > max? (currently defaults to sending max vel)
 // make sub file with diff ustep res and show max speeds
-// change homingInProg to axis variable?
 // why homing accel weird? if homing is first thing done, might cause problems
-// test relative move
 // figure out which methods to return after each failed command 
 // add additional parameters to initialization print
 // still get bug of not stopping
 // cap position sent?
 // send message when send too high of vel or pos
 // check for ranges in createcontroller params
-// remove unnecessary bitmasks
-// wont stop when homing?
+// homing really messed up - too fast of speed
 
 #include "asynMotorController.h"
 #include "asynMotorAxis.h"
@@ -49,6 +45,7 @@ class epicsShareClass TrinamicAxis : public asynMotorAxis
         //functions below for controller specific commands
         asynStatus sendAccelAndVelocity(double accel, double velocity);
         asynStatus getLimits();
+        int homingInProg = 0;
         
     friend class TrinamicController;
 };
@@ -83,7 +80,6 @@ class epicsShareClass TrinamicController : public asynMotorController
         unsigned int standby_current = DEFAULT_STANDBY_CURRENT; 
         unsigned int ustep_res = DEFAULT_USTEP_RES; 
         
-        int homingInProg = 0;
     
     friend class TrinamicAxis;
 };
