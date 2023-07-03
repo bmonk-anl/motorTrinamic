@@ -18,7 +18,7 @@
 // fixed # of bytes that is sent with each command 
 #define TRINAMIC_CMD_SIZE 9
 
-#define TRINAMIC_ADDR 0 
+#define TRINAMIC_ADDR 1
 #define DEFAULT_PULSE_DIV 3
 #define DEFAULT_RAMP_DIV 7
 #define DEFAULT_RUN_CURRENT 127 
@@ -56,7 +56,7 @@ class epicsShareClass TrinamicController : public asynMotorController
         TrinamicController(const char* portName, const char* TrinamicPortName, int numAxes, 
             double movingPollPeriod, double idlePollPeriod, unsigned int pulse_div, 
             unsigned int ramp_div, unsigned int run_current, unsigned int standby_current, 
-            unsigned int ustep_res);
+            unsigned int ustep_res, char module_addr);
         
         void report(FILE* fp, int level);
         TrinamicAxis* getAxis(asynUser *pasynUser);
@@ -72,13 +72,14 @@ class epicsShareClass TrinamicController : public asynMotorController
         unsigned int accel_steps_to_int (double acceleration, unsigned int pulse_div, 
                         unsigned int ramp_div);
         
-        char trinamicAddr = TRINAMIC_ADDR;
 
         unsigned int pulse_div = DEFAULT_PULSE_DIV;
         unsigned int ramp_div = DEFAULT_RAMP_DIV;
         unsigned int run_current = DEFAULT_RUN_CURRENT; 
         unsigned int standby_current = DEFAULT_STANDBY_CURRENT; 
         unsigned int ustep_res = DEFAULT_USTEP_RES; 
+        
+        char module_addr = TRINAMIC_ADDR;
         
     
     friend class TrinamicAxis;
