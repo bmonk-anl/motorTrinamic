@@ -8,6 +8,14 @@
 // send message when send too high of vel or pos
 // check for ranges in createcontroller params
 // homing really messed up - too fast of speed
+//
+//
+// add asyn params instead of sending info on startup:
+// pulse div
+// ramp div
+// run current
+// standby current
+// microstep resolution
 
 #include "asynMotorController.h"
 #include "asynMotorAxis.h"
@@ -24,6 +32,13 @@
 #define DEFAULT_RUN_CURRENT 127 
 #define DEFAULT_STANDBY_CURRENT 8
 #define DEFAULT_USTEP_RES 8 
+
+// ASYN PARAMS
+#define PulseDivString "PULSE_DIV"
+#define RampDivString "RAMP_DIV"
+#define RunCurrentString "RUN_CURRENT"
+#define StandbyCurrentString "STANDBY_CURRENT"
+#define UStepResString "USTEP_RES"
 
 
 class epicsShareClass TrinamicAxis : public asynMotorAxis
@@ -80,6 +95,12 @@ class epicsShareClass TrinamicController : public asynMotorController
         unsigned int ustep_res = DEFAULT_USTEP_RES; 
         
         char module_addr = TRINAMIC_ADDR;
+    protected:
+        int PulseDivString_;
+        int RampDivString _;
+        int RunCurrentString_;
+        int StandbyCurrentString_;
+        int UStepResString_;
         
     
     friend class TrinamicAxis;
