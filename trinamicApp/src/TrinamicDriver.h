@@ -16,12 +16,15 @@
 // run current
 // standby current
 // microstep resolution
+//
+// make per axis pulse/ramp/ustep ?
 
 #include "asynMotorController.h"
 #include "asynMotorAxis.h"
 
 #define MAX_TRINAMIC_AXES 6
-#define NUM_TRINAMIC_PARAMS 0 
+// number of asyn params
+#define NUM_TRINAMIC_PARAMS 5 
 
 // fixed # of bytes that is sent with each command 
 #define TRINAMIC_CMD_SIZE 9
@@ -69,9 +72,11 @@ class epicsShareClass TrinamicController : public asynMotorController
 {
     public:
         TrinamicController(const char* portName, const char* TrinamicPortName, int numAxes, 
-            double movingPollPeriod, double idlePollPeriod, unsigned int pulse_div, 
-            unsigned int ramp_div, unsigned int run_current, unsigned int standby_current, 
-            unsigned int ustep_res, char module_addr);
+            double movingPollPeriod, double idlePollPeriod, 
+            // unsigned int pulse_div, 
+            // unsigned int ramp_div, unsigned int run_current, unsigned int standby_current, 
+            // unsigned int ustep_res, 
+            char module_addr);
         
         void report(FILE* fp, int level);
         TrinamicAxis* getAxis(asynUser *pasynUser);
@@ -86,23 +91,33 @@ class epicsShareClass TrinamicController : public asynMotorController
         int vel_steps_to_int (double velocity, unsigned int pulse_div);
         unsigned int accel_steps_to_int (double acceleration, unsigned int pulse_div, 
                         unsigned int ramp_div);
-        
 
+        // asynportdriver function for writing extra params:
+        virtual asynStatus writeInt32(asynUser *pasynUser, epicsInt32 value);
+
+        // member variables to be set by asyn functions
         unsigned int pulse_div = DEFAULT_PULSE_DIV;
         unsigned int ramp_div = DEFAULT_RAMP_DIV;
         unsigned int run_current = DEFAULT_RUN_CURRENT; 
         unsigned int standby_current = DEFAULT_STANDBY_CURRENT; 
         unsigned int ustep_res = DEFAULT_USTEP_RES; 
+
+        int numAxes;
         
         char module_addr = TRINAMIC_ADDR;
     protected:
-        int PulseDivString_;
-        int RampDivString _;
-        int RunCurrentString_;
-        int StandbyCurrentString_;
-        int UStepResString_;
+        int PulseDiv_;
+        int RampDiv_;
+        int RunCurrent_;
+        int StandbyCurrent_;
+        int UStepRes_;
+    private:
+        asynStatus setPulseDiv(epicsInt32 value);
+        asynStatus setRampDiv(epicsInt32 value);
+        asynStatus setRunCurrent(epicsInt32 value);
+        asynStatus setStandbyCurrent(epicsInt32 value);
+        asynStatus setUStepRes(epicsInt32 value);
         
-    
     friend class TrinamicAxis;
 };
 									
