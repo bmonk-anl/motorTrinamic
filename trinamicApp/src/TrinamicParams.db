@@ -1,0 +1,47 @@
+# TODO: add default vals?
+
+record(ao, "$(P)$(R)setPulseDiv")
+{
+	field(DESC, "Pulse Divisor")
+	field(DTYP, "asynInt32")
+	field(OUT,  "@asyn($(PORT),$(ADDR))PULSE_DIV")
+	field(VAL,  0)
+    field(DRVL, 0)
+    field(DRVH, 13)
+}
+record(ao, "$(P)$(R)setRampDiv")
+{
+	field(DESC, "Pulse Divisor")
+	field(DTYP, "asynInt32")
+	field(OUT,  "@asyn($(PORT),$(ADDR))RAMP_DIV")
+	field(VAL,  0)
+    field(DRVL, 0)
+    field(DRVH, 13)
+}
+record(ao, "$(P)$(R)setRunCurrent")
+{
+	field(DESC, "Run Current")
+	field(DTYP, "asynInt32")
+	field(OUT,  "@asyn($(PORT),$(ADDR))RUN_CURRENT")
+	field(VAL,  0)
+    field(DRVL, 0)
+    field(DRVH, 255)
+}
+record(ao, "$(P)$(R)setStandbyCurrent")
+{
+	field(DESC, "Standby Current")
+	field(DTYP, "asynInt32")
+	field(OUT,  "@asyn($(PORT),$(ADDR))STANDBY_CURRENT")
+	field(VAL,  0)
+    field(DRVL, 0)
+    field(DRVH, 255)
+}
+record(ao, "$(P)$(R)setUStepRes")
+{
+	field(DESC, "Microstep Resolution")
+	field(DTYP, "asynInt32")
+	field(OUT,  "@asyn($(PORT),$(ADDR))USTEP_RES")
+	field(VAL,  0)
+    field(DRVL, 0)
+    field(DRVH, 8)
+}
