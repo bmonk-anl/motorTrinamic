@@ -160,7 +160,7 @@ TrinamicController::TrinamicController(const char* portName, const char* Trinami
         // unsigned int pulse_div, 
         // unsigned int ramp_div, unsigned int run_current, unsigned int standby_current, 
         // unsigned int ustep_res, 
-        char module_addr)
+        char module_addr, const char* model)
         : asynMotorController(portName, numAxes, NUM_TRINAMIC_PARAMS, 
                 0, // No additional callback interfaces beyond those in base class
                 0,
@@ -197,6 +197,9 @@ TrinamicController::TrinamicController(const char* portName, const char* Trinami
 
     this->numAxes = numAxes;
 
+    if (model == "6110") this->model = "6110";
+    else if (model == "6214") this->model = "6214";
+
     // TODO: set default values of asyn parameters
     
     for(axis=0; axis<numAxes; axis++)
@@ -221,7 +224,7 @@ extern "C" int TrinamicCreateController(const char* portName, const char* Trinam
         // unsigned int pulse_div, 
         // unsigned int ramp_div, unsigned int run_current, unsigned int standby_current,
         // unsigned int ustep_res, 
-        char module_addr)
+        char module_addr, const char* model)
 {
     // // check paramters are within valid range:
     // if ((pulse_div > 13) || (ramp_div > 13) ||
@@ -235,7 +238,7 @@ extern "C" int TrinamicCreateController(const char* portName, const char* Trinam
             numAxes, movingPollPeriod/1000., idlePollPeriod/1000., 
             // pulse_div, ramp_div,
             // run_current, standby_current, ustep_res, 
-            module_addr);
+            module_addr, model);
     pTrinamicController = NULL;
 
     return(asynSuccess);
@@ -287,6 +290,30 @@ asynStatus TrinamicController::writeReadController(const char *output, char *inp
     return status;
 }
 
+// most TMCL commands send a 32 bit integer
+asynStatus sendIntTMCL(char arg0, char arg1, char arg2, char arg3, int val) {
+
+    asynStatus status;
+
+    // set bytes of outString
+    outString_[0] = arg0;
+    outString_[1] = arg1;
+    outString_[2] = arg2;
+    outString_[3] = arg3;
+                        
+    outString_[4] = (char)(0xFF & (val >> 24));
+    outString_[5] = (char)(0xFF & (val >> 16));
+    outString_[6] = (char)(0xFF & (val >> 8 ));
+    outString_[7] = (char)(0xFF & (val      ));		
+    
+    // set next byte of outString_ to checksum needed for command
+    calcTrinamicChecksum(outString_);
+    
+    // send outString_ to controller
+    status = writeReadController();
+
+    return status;
+}
 
 // These are the TrinamicAxis methods
 
@@ -302,61 +329,10 @@ TrinamicAxis::TrinamicAxis(TrinamicController *pC, int axisNo)
     // inital commands to send:
     asynStatus status;
     
-    // // set run current (SAP):
-    // TODO: move commands to asyn parameters
-    // // format: <address> 05 06 <motor #> <current (0-255)(4 bytes)> <checksum>
-    // pC_->outString_[0] = pC_->module_addr;
-    // pC_->outString_[1] = 0x05;
-    // pC_->outString_[2] = 0x06;
-    // pC_->outString_[3] = (char)axisNo_;
-    // 
-    // // set 4 bytes of desired value (only need to set last byte, max is 255)
-    // pC_->outString_[4] = 0; 
-    // pC_->outString_[5] = 0; 
-    // pC_->outString_[6] = 0; 
-    // pC_->outString_[7] = (char)(pC_->run_current & 0x000000FF);		
-    // 
-    // pC_->calcTrinamicChecksum(pC_->outString_);
-    // 
-    // status = pC_->writeReadController();
-    // 
-    // // set standby current (SAP):
-    // // format: <address> 05 07 <motor #> <current (0-255)(4 bytes)> <checksum>
-    // pC_->outString_[0] = pC_->module_addr;
-    // pC_->outString_[1] = 0x05;
-    // pC_->outString_[2] = 0x07;
-    // pC_->outString_[3] = (char)axisNo_;
-    // 
-    // // set 4 bytes of desired value (only need to set last byte, max is 255)
-    // pC_->outString_[4] = 0; 
-    // pC_->outString_[5] = 0; 
-    // pC_->outString_[6] = 0; 
-    // pC_->outString_[7] = (char)(pC_->standby_current & 0x000000FF);		
-    // 
-    // pC_->calcTrinamicChecksum(pC_->outString_);
-    // 
-    // status = pC_->writeReadController();
-    // 
-    // // set microstep resolution (SAP)
-    // // format: <address> 05 8C <motor #> <resolution (0-8)(4 bytes)> <checksum>
-    // // # of microsteps will be 2^ustep_res steps per full step
-    // pC_->outString_[0] = pC_->module_addr;
-    // pC_->outString_[1] = 0x05;
-    // pC_->outString_[2] = 0x8C;
-    // pC_->outString_[3] = (char)axisNo_;
-    // 
-    // // set 4 bytes of desired value (only need to set last byte, max is 255)
-    // pC_->outString_[4] = 0; 
-    // pC_->outString_[5] = 0; 
-    // pC_->outString_[6] = 0; 
-    // pC_->outString_[7] = (char)(pC_->ustep_res & 0x000000FF);		
-    // 
-    // pC_->calcTrinamicChecksum(pC_->outString_);
-    // 
-    // status = pC_->writeReadController();
-    
     // enable left limit switch
     // format: <address> 05 0D <motor #> <0 (enable) (4 bytes)> <checksum>
+    status = sendIntTMCL(pC_->module_addr, 0x05, 0x0D, (char)axisNo_, 0);
+
     pC_->outString_[0] = pC_->module_addr;
     pC_->outString_[1] = 0x05;
     pC_->outString_[2] = 0x0D;
@@ -468,12 +444,20 @@ asynStatus TrinamicAxis::sendAccelAndVelocity(double acceleration, double veloci
 {
     asynStatus status;
     
-    unsigned int accel_int;
+    int accel_int;
     int vel_int;
-    
-    // convert velocity and accel from microsteps to controller units
-    vel_int = pC_->vel_steps_to_int(velocity, pC_->pulse_div);	
-    accel_int = pC_->accel_steps_to_int(acceleration, pC_->pulse_div, pC_->ramp_div);	
+
+    if (pC_->model == "6110") {
+        // convert velocity and accel from microsteps to controller units for 6110
+        vel_int = pC_->vel_steps_to_int(velocity, pC_->pulse_div);	
+        accel_int = pC_->accel_steps_to_int(acceleration, pC_->pulse_div, pC_->ramp_div);	
+    }
+    else if (pC_->model == "6214") {
+        vel_int = NINT(velocity);
+        accel_int = NINT(acceleration);
+        goto skip_6110;
+    }
+
     
     // set pulse divisor
     // format: <address> 05 9A <motor #> <value (4)> <checksum>
@@ -510,6 +494,7 @@ asynStatus TrinamicAxis::sendAccelAndVelocity(double acceleration, double veloci
     
     status = pC_->writeReadController();
     
+    skip_6110:
     // set vel: <address> 05 04 <motor #> <vel (4)> <checksum>
     pC_->outString_[0] = pC_->module_addr;
     pC_->outString_[1] = 0x05;
@@ -548,6 +533,7 @@ asynStatus TrinamicAxis::sendAccelAndVelocity(double acceleration, double veloci
 asynStatus TrinamicAxis::move(double position, int relative, double minVelocity, double maxVelocity,
         double acceleration)
 {
+    printf("entered move function\n");
     asynStatus status;
     
     int leftLimit, rightLimit;
@@ -600,6 +586,7 @@ asynStatus TrinamicAxis::move(double position, int relative, double minVelocity,
         pC_->outString_[1] = 0x04;
         pC_->outString_[2] = 0x00;
         pC_->outString_[3] = (char)axisNo_;
+        printf("abs move\n");
     }
     
     // set 4 bytes of desired value
@@ -611,6 +598,8 @@ asynStatus TrinamicAxis::move(double position, int relative, double minVelocity,
     pC_->calcTrinamicChecksum(pC_->outString_);
     
     status = pC_->writeReadController();
+
+    printf("sent move\n");
     return status;
     
 }
@@ -1076,12 +1065,14 @@ static const iocshArg TrinamicCreateControllerArg4 = {"Idle poll period (ms)", i
 // static const iocshArg TrinamicCreateControllerArg8 = {"standby current", iocshArgInt};
 // static const iocshArg TrinamicCreateControllerArg9 = {"microstep resolution", iocshArgInt};
 static const iocshArg TrinamicCreateControllerArg5 = {"module address", iocshArgInt};
+static const iocshArg TrinamicCreateControllerArg6 = {"model", iocshArgInt};
 static const iocshArg * const TrinamicCreateControllerArgs[] = {&TrinamicCreateControllerArg0,
                                                              &TrinamicCreateControllerArg1,
                                                              &TrinamicCreateControllerArg2,
                                                              &TrinamicCreateControllerArg3,
                                                              &TrinamicCreateControllerArg4,
-                                                             &TrinamicCreateControllerArg5};
+                                                             &TrinamicCreateControllerArg5,
+                                                             &TrinamicCreateControllerArg6};
                                                              // &TrinamicCreateControllerArg6,
                                                              // &TrinamicCreateControllerArg7,
                                                              // &TrinamicCreateControllerArg8,
@@ -1093,7 +1084,7 @@ static const iocshFuncDef TrinamicCreateControllerDef = {"TrinamicCreateControll
 static void TrinamicCreateControllerCallFunc(const iocshArgBuf *args)
 {
     TrinamicCreateController(args[0].sval, args[1].sval, args[2].ival, args[3].ival, 
-        args[4].ival, args[5].ival);
+        args[4].ival, args[5].ival, args[6].sval);
         // args[6].ival, args[7].ival, args[8].ival, 
         // args[9].ival, args[10].ival);
 }
