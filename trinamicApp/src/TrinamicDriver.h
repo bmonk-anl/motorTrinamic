@@ -1,4 +1,5 @@
 // TODO: 
+// ADD ARG FOR LIMIT POLARITY
 // make sub file with diff ustep res and show max speeds
 // why homing accel weird? if homing is first thing done, might cause problems
 // figure out which methods to return after each failed command 
@@ -35,6 +36,7 @@
 #define DEFAULT_RUN_CURRENT 127 
 #define DEFAULT_STANDBY_CURRENT 8
 #define DEFAULT_USTEP_RES 8 
+#define DEFAULT_LIM_MASK 0x0000
 
 // ASYN PARAMS
 #define PulseDivString "PULSE_DIV"
@@ -76,7 +78,7 @@ class epicsShareClass TrinamicController : public asynMotorController
             // unsigned int pulse_div, 
             // unsigned int ramp_div, unsigned int run_current, unsigned int standby_current, 
             // unsigned int ustep_res, 
-            char module_addr, const char* model);
+            char module_addr, const char* model, int limMask);
         
         void report(FILE* fp, int level);
         TrinamicAxis* getAxis(asynUser *pasynUser);
@@ -102,6 +104,8 @@ class epicsShareClass TrinamicController : public asynMotorController
         unsigned int run_current = DEFAULT_RUN_CURRENT; 
         unsigned int standby_current = DEFAULT_STANDBY_CURRENT; 
         unsigned int ustep_res = DEFAULT_USTEP_RES; 
+
+        int limMask = DEFAULT_LIM_MASK;
 
         std::string model = "6214";
 
