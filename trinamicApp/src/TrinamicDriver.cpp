@@ -328,6 +328,7 @@ asynStatus TrinamicController::sendIntTMCL(char arg0, char arg1, char arg2, char
   * 
   * Initializes register numbers, etc.
   */
+
 TrinamicAxis::TrinamicAxis(TrinamicController *pC, int axisNo)
         : asynMotorAxis(pC, axisNo), pC_(pC)
 {  
@@ -345,11 +346,12 @@ TrinamicAxis::TrinamicAxis(TrinamicController *pC, int axisNo)
     // limMask format: last 12 bits represent
     // set right limit switch polarity (05 18)
     // 1 for inverted, 0 for regular (normally closed)
+    // TODO; confirm that it's setting the right limit polarity
     int rightLimPolarity = (pC_->limMask >> axisNo) & 1;
     int leftLimPolarity = (pC_->limMask >> (axisNo + 1)) & 1;
-    status = pC_->sendIntTMCL(pC_->module_addr, 0x05, 0x0C, (char)axisNo_, rightLimPolarity);
+    status = pC_->sendIntTMCL(pC_->module_addr, 0x05, 0x18, (char)axisNo_, rightLimPolarity);
     // set left limit switch polarity (05 19)
-    status = pC_->sendIntTMCL(pC_->module_addr, 0x05, 0x0C, (char)axisNo_, leftLimPolarity);
+    status = pC_->sendIntTMCL(pC_->module_addr, 0x05, 0x19, (char)axisNo_, leftLimPolarity);
 
 }
 
@@ -375,15 +377,24 @@ asynStatus TrinamicAxis::getLimits()
     asynStatus status;
     int leftLimit, rightLimit;
     
+    // get limit polarity 
+    int rightLimPolarity = (pC_->limMask >> axisNo_) & 1;
+    int leftLimPolarity = (pC_->limMask >> (axisNo_ + 1)) & 1;
+
     // Read the limit status
     // get lim status: <address> 06 0A/0B (right/left) <motor #> 00 00 00 00 <checksum>
+
+    // if limit mask for axis is 0 (noninverted), limit read of 1 = triggered 
+    // if limit mask for axis is 1 (inverted), limit read of 0 = triggered 
 
     // get right limit
     status = pC_->sendIntTMCL(pC_->module_addr, 0x06, 0x0A, (char)axisNo_, 0);
 
     if (status) return status;
     // 1 means switch is activated
-    rightLimit = (int) (pC_->inString_[7] & 0x000000FF);
+    rightLimit = (int)(pC_->inString_[7] & 0x000000FF);
+    // if polarity is inverted, flip value
+    if (rightLimPolarity == 1) rightLimit = !rightLimit;
     setIntegerParam(pC_->motorStatusHighLimit_, rightLimit);
     
     // get left limit
@@ -391,7 +402,9 @@ asynStatus TrinamicAxis::getLimits()
 
     if (status) return status;
     // 1 means switch is activated
-    leftLimit = (int) (pC_->inString_[7] & 0x000000FF);
+    leftLimit = (int)(pC_->inString_[7] & 0x000000FF);
+    // if polarity is inverted, flip value
+    if (leftLimPolarity == 1) leftLimit = !leftLimit;
     setIntegerParam(pC_->motorStatusLowLimit_, leftLimit);
     
     // // cancel move (stop) if limit hit
@@ -430,9 +443,9 @@ asynStatus TrinamicAxis::sendAccelAndVelocity(double acceleration, double veloci
         // set deceleration = acceleration (0x11)
         status = pC_->sendIntTMCL(pC_->module_addr, 0x05, 0x11, (char)axisNo_, accel_int);
         // set start velocity = 0 (0x13)
-        status = pC_->sendIntTMCL(pC_->module_addr, 0x05, 0x13, (char)axisNo_, 0);
+        status = pC_->sendIntTMCL(pC_->module_addr, 0x05, 0x13, (char)axisNo_, 1);
         // set stop velocity = 0 (0x14)
-        status = pC_->sendIntTMCL(pC_->module_addr, 0x05, 0x14, (char)axisNo_, 0);
+        status = pC_->sendIntTMCL(pC_->module_addr, 0x05, 0x14, (char)axisNo_, 1);
         // set A1 = 0 (0x0F)
         status = pC_->sendIntTMCL(pC_->module_addr, 0x05, 0x0F, (char)axisNo_, 0);
         // set V1 = 0 (0x10)
@@ -454,6 +467,7 @@ asynStatus TrinamicAxis::sendAccelAndVelocity(double acceleration, double veloci
 asynStatus TrinamicAxis::move(double position, int relative, double minVelocity, double maxVelocity,
         double acceleration)
 {
+    printf("entered move\n");
     asynStatus status;
     
     int leftLimit, rightLimit;
@@ -461,7 +475,7 @@ asynStatus TrinamicAxis::move(double position, int relative, double minVelocity,
     double curPosition;
     
     // abort move if out of range
-    if ((position < -2147483648) || (position > 2147483648)) {
+    if ((position < -2147483648) || (position > 2147483647)) {
         asynPrint(pC_->pasynUserSelf, ASYN_TRACE_ERROR, 
             "Position of %f out of range\n", position);
         return asynError; 
@@ -583,6 +597,7 @@ asynStatus TrinamicAxis::moveVelocity(double minVelocity, double maxVelocity, do
 asynStatus TrinamicAxis::stop(double acceleration)
 {
     
+    printf("entered stop");
     asynStatus status;
     
     // unsigned int accel_int;
@@ -607,8 +622,8 @@ asynStatus TrinamicAxis::stop(double acceleration)
     
     // stop: <address> 03 00 <motor #> 00 00 00 00 <checksum>
     status = pC_->sendIntTMCL(pC_->module_addr, 0x03, 0x00, (char)axisNo_, 0);
+    printf("sent stop, status = %d\n", status);
     
-    status = pC_->writeReadController();
     return status;
 }
 
