@@ -467,7 +467,6 @@ asynStatus TrinamicAxis::sendAccelAndVelocity(double acceleration, double veloci
 asynStatus TrinamicAxis::move(double position, int relative, double minVelocity, double maxVelocity,
         double acceleration)
 {
-    printf("entered move\n");
     asynStatus status;
     
     int leftLimit, rightLimit;
@@ -531,10 +530,6 @@ asynStatus TrinamicAxis::home(double minVelocity, double maxVelocity,
     // status = sendAccelAndVelocity(acceleration, maxVelocity);
     
     // set reference search mode: <address> 05 05 <motor #> <accel (4)> <checksum>
-    pC_->outString_[0] = pC_->module_addr;
-    pC_->outString_[1] = 0x05;
-    pC_->outString_[2] = 0xC1;
-    pC_->outString_[3] = (char)axisNo_;
     
     if (forwards) {
         // set search mode to find right switch 
@@ -597,7 +592,6 @@ asynStatus TrinamicAxis::moveVelocity(double minVelocity, double maxVelocity, do
 asynStatus TrinamicAxis::stop(double acceleration)
 {
     
-    printf("entered stop");
     asynStatus status;
     
     // unsigned int accel_int;
@@ -749,6 +743,7 @@ asynStatus TrinamicController::writeInt32(asynUser *pasynUser, epicsInt32 value)
     else if (function == RunCurrent_)       status = setRunCurrent(value);
     else if (function == StandbyCurrent_)   status = setStandbyCurrent(value);
     else if (function == UStepRes_)         status = setUStepRes(value);
+    else asynMotorController::writeInt32(pasynUser, value);
 
 	callParamCallbacks();
 
