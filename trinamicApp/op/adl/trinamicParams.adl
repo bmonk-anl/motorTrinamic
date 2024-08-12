@@ -1,0 +1,302 @@
+
+file {
+	name="/net/s11iddserv/xorApps/epics/synApps_6_2_1/support/motorTrinamic/trinamicApp/op/adl/trinamicParams.adl"
+	version=030111
+}
+display {
+	object {
+		x=4222
+		y=1136
+		width=500
+		height=423
+	}
+	clr=14
+	bclr=4
+	cmap=""
+	gridSpacing=5
+	gridOn=0
+	snapToGrid=0
+}
+"color map" {
+	ncolors=65
+	colors {
+		ffffff,
+		ececec,
+		dadada,
+		c8c8c8,
+		bbbbbb,
+		aeaeae,
+		9e9e9e,
+		919191,
+		858585,
+		787878,
+		696969,
+		5a5a5a,
+		464646,
+		2d2d2d,
+		000000,
+		00d800,
+		1ebb00,
+		339900,
+		2d7f00,
+		216c00,
+		fd0000,
+		de1309,
+		be190b,
+		a01207,
+		820400,
+		5893ff,
+		597ee1,
+		4b6ec7,
+		3a5eab,
+		27548d,
+		fbf34a,
+		f9da3c,
+		eeb62b,
+		e19015,
+		cd6100,
+		ffb0ff,
+		d67fe2,
+		ae4ebc,
+		8b1a96,
+		610a75,
+		a4aaff,
+		8793e2,
+		6a73c1,
+		4d52a4,
+		343386,
+		c7bb6d,
+		b79d5c,
+		a47e3c,
+		7d5627,
+		58340f,
+		99ffff,
+		73dfff,
+		4ea5f9,
+		2a63e4,
+		0a00b8,
+		ebf1b5,
+		d4db9d,
+		bbc187,
+		a6a462,
+		8b8239,
+		73ff6b,
+		52da3b,
+		3cb420,
+		289315,
+		1a7309,
+	}
+}
+text {
+	object {
+		x=99
+		y=22
+		width=303
+		height=70
+	}
+	"basic attribute" {
+		clr=14
+	}
+	textix="Trinamic Params"
+	align="horiz. centered"
+}
+"text entry" {
+	object {
+		x=228
+		y=126
+		width=116
+		height=45
+	}
+	control {
+		chan="$(P)$(R)setPulseDiv"
+		clr=14
+		bclr=4
+	}
+	limits {
+	}
+}
+"text entry" {
+	object {
+		x=228
+		y=177
+		width=116
+		height=45
+	}
+	control {
+		chan="$(P)$(R)setRampDiv"
+		clr=14
+		bclr=4
+	}
+	limits {
+	}
+}
+"text entry" {
+	object {
+		x=228
+		y=280
+		width=116
+		height=45
+	}
+	control {
+		chan="$(P)$(R)setStandbyCurrent"
+		clr=14
+		bclr=4
+	}
+	limits {
+	}
+}
+"text entry" {
+	object {
+		x=228
+		y=229
+		width=116
+		height=45
+	}
+	control {
+		chan="$(P)$(R)setRunCurrent"
+		clr=14
+		bclr=4
+	}
+	limits {
+	}
+}
+"text entry" {
+	object {
+		x=228
+		y=330
+		width=116
+		height=45
+	}
+	control {
+		chan="$(P)$(R)setUStepRes"
+		clr=14
+		bclr=4
+	}
+	limits {
+	}
+}
+text {
+	object {
+		x=37
+		y=134
+		width=180
+		height=25
+	}
+	"basic attribute" {
+		clr=14
+	}
+	textix="Pulse Divisor"
+	align="horiz. right"
+}
+text {
+	object {
+		x=37
+		y=183
+		width=180
+		height=25
+	}
+	"basic attribute" {
+		clr=14
+	}
+	textix="Ramp Divisor"
+	align="horiz. right"
+}
+text {
+	object {
+		x=37
+		y=235
+		width=180
+		height=25
+	}
+	"basic attribute" {
+		clr=14
+	}
+	textix="Run Current"
+	align="horiz. right"
+}
+text {
+	object {
+		x=37
+		y=284
+		width=180
+		height=25
+	}
+	"basic attribute" {
+		clr=14
+	}
+	textix="Standby Current"
+	align="horiz. right"
+}
+text {
+	object {
+		x=37
+		y=336
+		width=180
+		height=25
+	}
+	"basic attribute" {
+		clr=14
+	}
+	textix="Step Res."
+	align="horiz. right"
+}
+text {
+	object {
+		x=351
+		y=137
+		width=100
+		height=25
+	}
+	"basic attribute" {
+		clr=14
+	}
+	textix="(0 - 13)"
+}
+text {
+	object {
+		x=351
+		y=188
+		width=100
+		height=25
+	}
+	"basic attribute" {
+		clr=14
+	}
+	textix="(0 - 13)"
+}
+text {
+	object {
+		x=351
+		y=239
+		width=100
+		height=25
+	}
+	"basic attribute" {
+		clr=14
+	}
+	textix="(0 - 255)"
+}
+text {
+	object {
+		x=351
+		y=288
+		width=100
+		height=25
+	}
+	"basic attribute" {
+		clr=14
+	}
+	textix="(0 - 255)"
+}
+text {
+	object {
+		x=352
+		y=333
+		width=100
+		height=25
+	}
+	"basic attribute" {
+		clr=14
+	}
+	textix="(0 - 8)"
+}

@@ -1,5 +1,11 @@
 # RELEASE - Location of external support modules
 
+# Define the path to the synApps support directory and uncomment.
+SUPPORT=/APSshare/epics/synApps_6_3/support
+
+# Specify the standard synApps configuration.
+-include $(SUPPORT)/configure/RELEASE
+
 # Use motor/module's generated release file when buidling inside motor
 -include $(TOP)/../RELEASE.$(EPICS_HOST_ARCH).local
 # Use motorTrinamic's RELEASE.local when building outside motor

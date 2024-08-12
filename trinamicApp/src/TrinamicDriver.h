@@ -1,4 +1,5 @@
 // TODO: 
+// ADD ARG FOR LIMIT POLARITY
 // make sub file with diff ustep res and show max speeds
 // why homing accel weird? if homing is first thing done, might cause problems
 // figure out which methods to return after each failed command 
@@ -24,7 +25,7 @@
 
 #define MAX_TRINAMIC_AXES 6
 // number of asyn params
-#define NUM_TRINAMIC_PARAMS 5 
+#define NUM_TRINAMIC_PARAMS 6
 
 // fixed # of bytes that is sent with each command 
 #define TRINAMIC_CMD_SIZE 9
@@ -35,6 +36,7 @@
 #define DEFAULT_RUN_CURRENT 127 
 #define DEFAULT_STANDBY_CURRENT 8
 #define DEFAULT_USTEP_RES 8 
+#define DEFAULT_LIM_MASK 0x0000
 
 // ASYN PARAMS
 #define PulseDivString "PULSE_DIV"
@@ -76,7 +78,7 @@ class epicsShareClass TrinamicController : public asynMotorController
             // unsigned int pulse_div, 
             // unsigned int ramp_div, unsigned int run_current, unsigned int standby_current, 
             // unsigned int ustep_res, 
-            char module_addr);
+            char module_addr, const char* model, int limMask);
         
         void report(FILE* fp, int level);
         TrinamicAxis* getAxis(asynUser *pasynUser);
@@ -87,6 +89,7 @@ class epicsShareClass TrinamicController : public asynMotorController
         asynStatus writeReadController();
         asynStatus writeReadController(const char *output, char *input, 
                         size_t maxChars, size_t *nread, double timeout);
+        asynStatus sendIntTMCL(char arg0, char arg1, char arg2, char arg3, int val);
         void calcTrinamicChecksum(char* command);
         int vel_steps_to_int (double velocity, unsigned int pulse_div);
         unsigned int accel_steps_to_int (double acceleration, unsigned int pulse_div, 
@@ -101,6 +104,10 @@ class epicsShareClass TrinamicController : public asynMotorController
         unsigned int run_current = DEFAULT_RUN_CURRENT; 
         unsigned int standby_current = DEFAULT_STANDBY_CURRENT; 
         unsigned int ustep_res = DEFAULT_USTEP_RES; 
+
+        int limMask = DEFAULT_LIM_MASK;
+
+        std::string model = "6214";
 
         int numAxes;
         
