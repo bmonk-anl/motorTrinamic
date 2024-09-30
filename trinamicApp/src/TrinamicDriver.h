@@ -25,7 +25,7 @@
 
 #define MAX_TRINAMIC_AXES 6
 // number of asyn params
-#define NUM_TRINAMIC_PARAMS 6
+// #define NUM_TRINAMIC_PARAMS 6
 
 // fixed # of bytes that is sent with each command 
 #define TRINAMIC_CMD_SIZE 9
@@ -39,37 +39,19 @@
 #define DEFAULT_LIM_MASK 0x0000
 
 // ASYN PARAMS
-#define PulseDivString0 "PULSE_DIV_0"
-#define PulseDivString1 "PULSE_DIV_1"
-#define PulseDivString2 "PULSE_DIV_2"
-#define PulseDivString3 "PULSE_DIV_3"
-#define PulseDivString4 "PULSE_DIV_4"
-#define PulseDivString5 "PULSE_DIV_5"
-#define RampDivString0 "RAMP_DIV_0"
-#define RampDivString1 "RAMP_DIV_1"
-#define RampDivString2 "RAMP_DIV_2"
-#define RampDivString3 "RAMP_DIV_3"
-#define RampDivString4 "RAMP_DIV_4"
-#define RampDivString5 "RAMP_DIV_5"
-#define RunCurrentString0 "RUN_CURRENT_0"
-#define RunCurrentString1 "RUN_CURRENT_1"
-#define RunCurrentString2 "RUN_CURRENT_2"
-#define RunCurrentString3 "RUN_CURRENT_3"
-#define RunCurrentString4 "RUN_CURRENT_4"
-#define RunCurrentString5 "RUN_CURRENT_5"
-#define StandbyCurrentString0 "STANDBY_CURRENT_0"
-#define StandbyCurrentString1 "STANDBY_CURRENT_1"
-#define StandbyCurrentString2 "STANDBY_CURRENT_2"
-#define StandbyCurrentString3 "STANDBY_CURRENT_3"
-#define StandbyCurrentString4 "STANDBY_CURRENT_4"
-#define StandbyCurrentString5 "STANDBY_CURRENT_5"
-#define UStepResString0 "USTEP_RES_0"
-#define UStepResString1 "USTEP_RES_1"
-#define UStepResString2 "USTEP_RES_2"
-#define UStepResString3 "USTEP_RES_3"
-#define UStepResString4 "USTEP_RES_4"
-#define UStepResString5 "USTEP_RES_5"
+// each parameter will have one per axis, below is a base string combined with axis number 
+// in the createParam function
 
+#define PulseDivString_BASE "PULSE_DIV"
+#define RampDivString_BASE "RAMP_DIV"
+#define RunCurrentString_BASE "RUN_CURRENT"
+#define StandbyCurrentString_BASE "STANDBY_CURRENT"
+#define UStepResString_BASE "USTEP_RES"
+#define PulseDivRBVString_BASE "PULSE_DIV_RBV"
+#define RampDivRBVString_BASE "RAMP_DIV_RBV"
+#define RunCurrentRBVString_BASE "RUN_CURRENT_RBV"
+#define StandbyCurrentRBVString_BASE "STANDBY_CURRENT_RBV"
+#define UStepResRBVString_BASE "USTEP_RES_RBV"
 
 class epicsShareClass TrinamicAxis : public asynMotorAxis
 {
@@ -138,24 +120,19 @@ class epicsShareClass TrinamicController : public asynMotorController
     protected:
         int PulseDiv_[6];
         int RampDiv_[6];
-        int RunCurrent0_;
-        int RunCurrent1_;
-        int RunCurrent2_;
-        int RunCurrent3_;
-        int RunCurrent4_;
-        int RunCurrent5_;
-        int StandbyCurrent0_;
-        int StandbyCurrent1_;
-        int StandbyCurrent2_;
-        int StandbyCurrent3_;
-        int StandbyCurrent4_;
-        int StandbyCurrent5_;
-        int UStepRes0_;
-        int UStepRes1_;
-        int UStepRes2_;
-        int UStepRes3_;
-        int UStepRes4_;
-        int UStepRes5_;
+        int RunCurrent_[6];
+        int StandbyCurrent_[6];
+        int UStepRes_[6];
+
+        int PulseDiv_RBV_[6];
+        int RampDiv_RBV_[6];
+        int RunCurrent_RBV_[6];
+        int StandbyCurrent_RBV_[6];
+        int UStepRes_RBV_[6];
+
+	#define FIRST_TRINAMIC_PARAM PulseDiv_[0]
+	#define LAST_TRINAMIC_PARAM UStepRes_RBV_[5]
+
     private:
         asynStatus setPulseDiv(epicsInt32 value, int axis);
         asynStatus setRampDiv(epicsInt32 value, int axis);
@@ -166,3 +143,5 @@ class epicsShareClass TrinamicController : public asynMotorController
     friend class TrinamicAxis;
 };
 									
+#define NUM_TRINAMIC_PARAMS ((int)(&LAST_TRINAMIC_PARAM - &FIRST_TRINAMIC_PARAM + 1))
+

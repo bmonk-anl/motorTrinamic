@@ -343,7 +343,7 @@ text {
 }
 "text update" {
 	object {
-		x=422
+		x=413
 		y=162
 		width=150
 		height=29
@@ -358,7 +358,7 @@ text {
 }
 "text update" {
 	object {
-		x=422
+		x=413
 		y=213
 		width=150
 		height=29
@@ -373,7 +373,7 @@ text {
 }
 "text update" {
 	object {
-		x=422
+		x=413
 		y=264
 		width=160
 		height=29
@@ -388,7 +388,7 @@ text {
 }
 "text update" {
 	object {
-		x=422
+		x=413
 		y=315
 		width=160
 		height=29
@@ -403,7 +403,7 @@ text {
 }
 "text update" {
 	object {
-		x=422
+		x=413
 		y=365
 		width=150
 		height=29

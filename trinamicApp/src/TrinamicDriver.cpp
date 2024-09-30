@@ -177,38 +177,41 @@ TrinamicController::TrinamicController(const char* portName, const char* Trinami
     TrinamicAxis* pAxis;
     static const char* functionName = "TrinamicController::TrinamicController";
 
-    // create additional asyn params
-    createParam(PulseDivString0, asynParamInt32, &PulseDiv_[0]);
-    createParam(PulseDivString1, asynParamInt32, &PulseDiv_[1]);
-    createParam(PulseDivString2, asynParamInt32, &PulseDiv_[2]);
-    createParam(PulseDivString3, asynParamInt32, &PulseDiv_[3]);
-    createParam(PulseDivString4, asynParamInt32, &PulseDiv_[4]);
-    createParam(PulseDivString5, asynParamInt32, &PulseDiv_[5]);
-    createParam(RampDivString0, asynParamInt32, &RampDiv_[0]);
-    createParam(RampDivString1, asynParamInt32, &RampDiv_[1]);
-    createParam(RampDivString2, asynParamInt32, &RampDiv_[2]);
-    createParam(RampDivString3, asynParamInt32, &RampDiv_[3]);
-    createParam(RampDivString4, asynParamInt32, &RampDiv_[4]);
-    createParam(RampDivString5, asynParamInt32, &RampDiv_[5]);
-    createParam(RunCurrentString0, asynParamInt32, &RunCurrent0_);
-    createParam(RunCurrentString1, asynParamInt32, &RunCurrent1_);
-    createParam(RunCurrentString2, asynParamInt32, &RunCurrent2_);
-    createParam(RunCurrentString3, asynParamInt32, &RunCurrent3_);
-    createParam(RunCurrentString4, asynParamInt32, &RunCurrent4_);
-    createParam(RunCurrentString5, asynParamInt32, &RunCurrent5_);
-    createParam(StandbyCurrentString0, asynParamInt32, &StandbyCurrent0_);
-    createParam(StandbyCurrentString1, asynParamInt32, &StandbyCurrent1_);
-    createParam(StandbyCurrentString2, asynParamInt32, &StandbyCurrent2_);
-    createParam(StandbyCurrentString3, asynParamInt32, &StandbyCurrent3_);
-    createParam(StandbyCurrentString4, asynParamInt32, &StandbyCurrent4_);
-    createParam(StandbyCurrentString5, asynParamInt32, &StandbyCurrent5_);
-    createParam(UStepResString0, asynParamInt32, &UStepRes0_);
-    createParam(UStepResString1, asynParamInt32, &UStepRes1_);
-    createParam(UStepResString2, asynParamInt32, &UStepRes2_);
-    createParam(UStepResString3, asynParamInt32, &UStepRes3_);
-    createParam(UStepResString4, asynParamInt32, &UStepRes4_);
-    createParam(UStepResString5, asynParamInt32, &UStepRes5_);
+
+    for (int i = 0; i < 6; i++) {
+        char paramName[50];
     
+        sprintf(paramName, "%s_%d", PulseDivString_BASE, i);
+        createParam(paramName, asynParamInt32, &PulseDiv_[i]);
+    
+        sprintf(paramName, "%s_%d", RampDivString_BASE, i);
+        createParam(paramName, asynParamInt32, &RampDiv_[i]);
+    
+        sprintf(paramName, "%s_%d", RunCurrentString_BASE, i);
+        createParam(paramName, asynParamInt32, &RunCurrent_[i]);
+    
+        sprintf(paramName, "%s_%d", StandbyCurrentString_BASE, i);
+        createParam(paramName, asynParamInt32, &StandbyCurrent_[i]);
+    
+        sprintf(paramName, "%s_%d", UStepResString_BASE, i);
+        createParam(paramName, asynParamInt32, &UStepRes_[i]);
+    
+        sprintf(paramName, "%s_%d", PulseDivRBVString_BASE, i);
+        createParam(paramName, asynParamInt32, &PulseDiv_RBV_[i]);
+    
+        sprintf(paramName, "%s_%d", RampDivRBVString_BASE, i);
+        createParam(paramName, asynParamInt32, &RampDiv_RBV_[i]);
+    
+        sprintf(paramName, "%s_%d", RunCurrentRBVString_BASE, i);
+        createParam(paramName, asynParamInt32, &RunCurrent_RBV_[i]);
+    
+        sprintf(paramName, "%s_%d", StandbyCurrentRBVString_BASE, i);
+        createParam(paramName, asynParamInt32, &StandbyCurrent_RBV_[i]);
+    
+        sprintf(paramName, "%s_%d", UStepResRBVString_BASE, i);
+        createParam(paramName, asynParamInt32, &UStepRes_RBV_[i]);
+    }
+
     // Connect to Trinamic Controller
     status = pasynOctetSyncIO->connect(TrinamicPortName, 0, &pasynUserController_, NULL);
     if(status) {
@@ -349,7 +352,7 @@ asynStatus TrinamicController::sendIntTMCL(char arg0, char arg1, char arg2, char
 
 /** Creates a new TrinamicAxis object.
   * \param[in] pC Pointer to the TrinamicController to which this axis belongs. 
-  * \param[in] axisNo Index number of this axis, range 0 to pC->numAxes_-1.
+  * \param[in] axisNo Index number of this axis, range 0 to pC_->numAxes_-1.
   * 
   * Initializes register numbers, etc.
   */
@@ -384,7 +387,7 @@ TrinamicAxis::TrinamicAxis(TrinamicController *pC, int axisNo)
 	// ************************************
     }
     // 6214 has axis specific limit polarity
-    else if (pC->model == "6214") {
+    else if (pC_->model == "6214") {
         rightLimPolarity = (pC_->limMask >> (2*axisNo)) & 1;
         leftLimPolarity = (pC_->limMask >> (2*axisNo + 1)) & 1;
         // set right limit switch polarity (05 18)
@@ -698,8 +701,64 @@ asynStatus TrinamicAxis::poll(bool *moving)
     int prevLeftLimit, prevRightLimit, curLeftLimit, curRightLimit; 
     int curDir;
     double accel;
+    int pulse_div, ramp_div, run_cur, stand_cur, ustep_res; // extra asyn params
     
     asynStatus status;
+
+    // readback of extra asyn params:
+    
+    if (pC_->model == "6110") {
+    	// pulse div
+    	status = pC_->sendIntTMCL(pC_->module_addr, 0x06, 0x9A, (char)axisNo_, 0);
+    	pulse_div = (int)(
+    	    ((pC_->inString_[4] << 24) & 0xFF000000) | 
+    	    ((pC_->inString_[5] << 16) & 0x00FF0000) | 
+    	    ((pC_->inString_[6] << 8 ) & 0x0000FF00) | 
+    	    ((pC_->inString_[7] << 0 ) & 0x000000FF) );
+
+    	pC_->setIntegerParam(pC_->PulseDiv_RBV_[axisNo_], pulse_div);
+
+    	// ramp div
+    	status = pC_->sendIntTMCL(pC_->module_addr, 0x06, 0x99, (char)axisNo_, 0);
+    	ramp_div = (int)(
+    	    ((pC_->inString_[4] << 24) & 0xFF000000) | 
+    	    ((pC_->inString_[5] << 16) & 0x00FF0000) | 
+    	    ((pC_->inString_[6] << 8 ) & 0x0000FF00) | 
+    	    ((pC_->inString_[7] << 0 ) & 0x000000FF) );
+
+    	pC_->setIntegerParam(pC_->RampDiv_RBV_[axisNo_], ramp_div);
+    }
+
+    // run current
+    status = pC_->sendIntTMCL(pC_->module_addr, 0x06, 0x06, (char)axisNo_, 0);
+    run_cur = (int)(
+        ((pC_->inString_[4] << 24) & 0xFF000000) | 
+        ((pC_->inString_[5] << 16) & 0x00FF0000) | 
+        ((pC_->inString_[6] << 8 ) & 0x0000FF00) | 
+        ((pC_->inString_[7] << 0 ) & 0x000000FF) );
+
+    pC_->setIntegerParam(pC_->RunCurrent_RBV_[axisNo_], run_cur);
+     
+    // standby current
+    status = pC_->sendIntTMCL(pC_->module_addr, 0x06, 0x07, (char)axisNo_, 0);
+    stand_cur = (int)(
+        ((pC_->inString_[4] << 24) & 0xFF000000) | 
+        ((pC_->inString_[5] << 16) & 0x00FF0000) | 
+        ((pC_->inString_[6] << 8 ) & 0x0000FF00) | 
+        ((pC_->inString_[7] << 0 ) & 0x000000FF) );
+
+    pC_->setIntegerParam(pC_->StandbyCurrent_RBV_[axisNo_], stand_cur);
+
+    // ustep res
+    status = pC_->sendIntTMCL(pC_->module_addr, 0x06, 0x8C, (char)axisNo_, 0);
+    ustep_res = (int)(
+        ((pC_->inString_[4] << 24) & 0xFF000000) | 
+        ((pC_->inString_[5] << 16) & 0x00FF0000) | 
+        ((pC_->inString_[6] << 8 ) & 0x0000FF00) | 
+        ((pC_->inString_[7] << 0 ) & 0x000000FF) );
+
+    pC_->setIntegerParam(pC_->UStepRes_RBV_[axisNo_], ustep_res);
+
     
     // Read the current motor position
     // get pos: <address> 06 01 <motor #> 00 00 00 00 <checksum> 
@@ -764,6 +823,7 @@ asynStatus TrinamicAxis::poll(bool *moving)
     skip:
     setIntegerParam(pC_->motorStatusProblem_, status ? 1:0);
     callParamCallbacks();
+    pC_->callParamCallbacks(); // controller callbacks for asyn params
     return status ? asynError : asynSuccess;
 }
 
@@ -792,24 +852,24 @@ asynStatus TrinamicController::writeInt32(asynUser *pasynUser, epicsInt32 value)
     else if (function == RampDiv_[3])          status = setRampDiv(value, 3);
     else if (function == RampDiv_[4])          status = setRampDiv(value, 4);
     else if (function == RampDiv_[5])          status = setRampDiv(value, 5);
-    else if (function == RunCurrent0_)       status = setRunCurrent(value, 0);
-    else if (function == RunCurrent1_)       status = setRunCurrent(value, 1);
-    else if (function == RunCurrent2_)       status = setRunCurrent(value, 2);
-    else if (function == RunCurrent3_)       status = setRunCurrent(value, 3);
-    else if (function == RunCurrent4_)       status = setRunCurrent(value, 4);
-    else if (function == RunCurrent5_)       status = setRunCurrent(value, 5);
-    else if (function == StandbyCurrent0_)   status = setStandbyCurrent(value, 0);
-    else if (function == StandbyCurrent1_)   status = setStandbyCurrent(value, 1);
-    else if (function == StandbyCurrent2_)   status = setStandbyCurrent(value, 2);
-    else if (function == StandbyCurrent3_)   status = setStandbyCurrent(value, 3);
-    else if (function == StandbyCurrent4_)   status = setStandbyCurrent(value, 4);
-    else if (function == StandbyCurrent5_)   status = setStandbyCurrent(value, 5);
-    else if (function == UStepRes0_)         status = setUStepRes(value, 0);
-    else if (function == UStepRes1_)         status = setUStepRes(value, 1);
-    else if (function == UStepRes2_)         status = setUStepRes(value, 2);
-    else if (function == UStepRes3_)         status = setUStepRes(value, 3);
-    else if (function == UStepRes4_)         status = setUStepRes(value, 4);
-    else if (function == UStepRes5_)         status = setUStepRes(value, 5);
+    else if (function == RunCurrent_[0])       status = setRunCurrent(value, 0);
+    else if (function == RunCurrent_[1])       status = setRunCurrent(value, 1);
+    else if (function == RunCurrent_[2])       status = setRunCurrent(value, 2);
+    else if (function == RunCurrent_[3])       status = setRunCurrent(value, 3);
+    else if (function == RunCurrent_[4])       status = setRunCurrent(value, 4);
+    else if (function == RunCurrent_[5])       status = setRunCurrent(value, 5);
+    else if (function == StandbyCurrent_[0])   status = setStandbyCurrent(value, 0);
+    else if (function == StandbyCurrent_[1])   status = setStandbyCurrent(value, 1);
+    else if (function == StandbyCurrent_[2])   status = setStandbyCurrent(value, 2);
+    else if (function == StandbyCurrent_[3])   status = setStandbyCurrent(value, 3);
+    else if (function == StandbyCurrent_[4])   status = setStandbyCurrent(value, 4);
+    else if (function == StandbyCurrent_[5])   status = setStandbyCurrent(value, 5);
+    else if (function == UStepRes_[0])         status = setUStepRes(value, 0);
+    else if (function == UStepRes_[1])         status = setUStepRes(value, 1);
+    else if (function == UStepRes_[2])         status = setUStepRes(value, 2);
+    else if (function == UStepRes_[3])         status = setUStepRes(value, 3);
+    else if (function == UStepRes_[4])         status = setUStepRes(value, 4);
+    else if (function == UStepRes_[5])         status = setUStepRes(value, 5);
     else asynMotorController::writeInt32(pasynUser, value);
 
 	callParamCallbacks();

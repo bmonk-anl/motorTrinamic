@@ -5,10 +5,10 @@ file {
 }
 display {
 	object {
-		x=496
-		y=371
-		width=512
-		height=375
+		x=406
+		y=302
+		width=550
+		height=344
 	}
 	clr=14
 	bclr=4
@@ -102,8 +102,8 @@ text {
 }
 "text entry" {
 	object {
-		x=228
-		y=222
+		x=194
+		y=213
 		width=116
 		height=45
 	}
@@ -117,8 +117,8 @@ text {
 }
 "text entry" {
 	object {
-		x=228
-		y=171
+		x=194
+		y=162
 		width=116
 		height=45
 	}
@@ -132,8 +132,8 @@ text {
 }
 "text entry" {
 	object {
-		x=228
-		y=272
+		x=194
+		y=263
 		width=116
 		height=45
 	}
@@ -147,8 +147,8 @@ text {
 }
 text {
 	object {
-		x=37
-		y=177
+		x=3
+		y=168
 		width=180
 		height=25
 	}
@@ -160,8 +160,8 @@ text {
 }
 text {
 	object {
-		x=37
-		y=226
+		x=3
+		y=217
 		width=180
 		height=25
 	}
@@ -173,8 +173,8 @@ text {
 }
 text {
 	object {
-		x=37
-		y=278
+		x=3
+		y=269
 		width=180
 		height=25
 	}
@@ -186,8 +186,8 @@ text {
 }
 text {
 	object {
-		x=351
-		y=181
+		x=317
+		y=172
 		width=100
 		height=25
 	}
@@ -198,8 +198,8 @@ text {
 }
 text {
 	object {
-		x=351
-		y=230
+		x=317
+		y=221
 		width=100
 		height=25
 	}
@@ -210,8 +210,8 @@ text {
 }
 text {
 	object {
-		x=352
-		y=275
+		x=318
+		y=266
 		width=100
 		height=25
 	}
@@ -246,6 +246,63 @@ text {
 		bclr=4
 	}
 	align="horiz. centered"
+	limits {
+	}
+}
+text {
+	object {
+		x=413
+		y=129
+		width=100
+		height=30
+	}
+	"basic attribute" {
+		clr=14
+	}
+	textix="Readback:"
+}
+"text update" {
+	object {
+		x=422
+		y=162
+		width=160
+		height=29
+	}
+	monitor {
+		chan="$(P)$(M):runCurrent_RBV"
+		clr=54
+		bclr=4
+	}
+	limits {
+	}
+}
+"text update" {
+	object {
+		x=422
+		y=213
+		width=160
+		height=29
+	}
+	monitor {
+		chan="$(P)$(M):standbyCurrent_RBV"
+		clr=54
+		bclr=4
+	}
+	limits {
+	}
+}
+"text update" {
+	object {
+		x=422
+		y=263
+		width=150
+		height=29
+	}
+	monitor {
+		chan="$(P)$(M):uStepRes_RBV"
+		clr=54
+		bclr=4
+	}
 	limits {
 	}
 }
