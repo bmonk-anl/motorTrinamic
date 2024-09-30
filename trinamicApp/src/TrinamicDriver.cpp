@@ -178,11 +178,36 @@ TrinamicController::TrinamicController(const char* portName, const char* Trinami
     static const char* functionName = "TrinamicController::TrinamicController";
 
     // create additional asyn params
-    createParam(PulseDivString, asynParamInt32, &PulseDiv_);
-    createParam(RampDivString, asynParamInt32, &RampDiv_);
-    createParam(RunCurrentString, asynParamInt32, &RunCurrent_);
-    createParam(StandbyCurrentString, asynParamInt32, &StandbyCurrent_);
-    createParam(UStepResString, asynParamInt32, &UStepRes_);
+    createParam(PulseDivString0, asynParamInt32, &PulseDiv_[0]);
+    createParam(PulseDivString1, asynParamInt32, &PulseDiv_[1]);
+    createParam(PulseDivString2, asynParamInt32, &PulseDiv_[2]);
+    createParam(PulseDivString3, asynParamInt32, &PulseDiv_[3]);
+    createParam(PulseDivString4, asynParamInt32, &PulseDiv_[4]);
+    createParam(PulseDivString5, asynParamInt32, &PulseDiv_[5]);
+    createParam(RampDivString0, asynParamInt32, &RampDiv_[0]);
+    createParam(RampDivString1, asynParamInt32, &RampDiv_[1]);
+    createParam(RampDivString2, asynParamInt32, &RampDiv_[2]);
+    createParam(RampDivString3, asynParamInt32, &RampDiv_[3]);
+    createParam(RampDivString4, asynParamInt32, &RampDiv_[4]);
+    createParam(RampDivString5, asynParamInt32, &RampDiv_[5]);
+    createParam(RunCurrentString0, asynParamInt32, &RunCurrent0_);
+    createParam(RunCurrentString1, asynParamInt32, &RunCurrent1_);
+    createParam(RunCurrentString2, asynParamInt32, &RunCurrent2_);
+    createParam(RunCurrentString3, asynParamInt32, &RunCurrent3_);
+    createParam(RunCurrentString4, asynParamInt32, &RunCurrent4_);
+    createParam(RunCurrentString5, asynParamInt32, &RunCurrent5_);
+    createParam(StandbyCurrentString0, asynParamInt32, &StandbyCurrent0_);
+    createParam(StandbyCurrentString1, asynParamInt32, &StandbyCurrent1_);
+    createParam(StandbyCurrentString2, asynParamInt32, &StandbyCurrent2_);
+    createParam(StandbyCurrentString3, asynParamInt32, &StandbyCurrent3_);
+    createParam(StandbyCurrentString4, asynParamInt32, &StandbyCurrent4_);
+    createParam(StandbyCurrentString5, asynParamInt32, &StandbyCurrent5_);
+    createParam(UStepResString0, asynParamInt32, &UStepRes0_);
+    createParam(UStepResString1, asynParamInt32, &UStepRes1_);
+    createParam(UStepResString2, asynParamInt32, &UStepRes2_);
+    createParam(UStepResString3, asynParamInt32, &UStepRes3_);
+    createParam(UStepResString4, asynParamInt32, &UStepRes4_);
+    createParam(UStepResString5, asynParamInt32, &UStepRes5_);
     
     // Connect to Trinamic Controller
     status = pasynOctetSyncIO->connect(TrinamicPortName, 0, &pasynUserController_, NULL);
@@ -353,8 +378,10 @@ TrinamicAxis::TrinamicAxis(TrinamicController *pC, int axisNo)
         // 6110 only has global limit switch polarity setting. This will run for each axis creation but doesn't need to
         char globalLimByte = ((pC_->limMask & 1) == 1) ? 3 : 0;
         status = pC_->sendIntTMCL(pC_->module_addr, 0x09, 79, 0x00, globalLimByte);
+	// ************************************
 	// reverse shaft
-        status = pC_->sendIntTMCL(pC_->module_addr, 0x09, 90, 0x00, 3);
+        // status = pC_->sendIntTMCL(pC_->module_addr, 0x09, 90, 0x00, 3);
+	// ************************************
     }
     // 6214 has axis specific limit polarity
     else if (pC->model == "6214") {
@@ -434,19 +461,22 @@ asynStatus TrinamicAxis::sendAccelAndVelocity(double acceleration, double veloci
     
     int accel_int;
     int vel_int;
+    int pulse_div, ramp_div;
 
     if (pC_->model == "6110") {
         // convert velocity and accel from microsteps to controller units for 6110
-        vel_int = pC_->vel_steps_to_int(velocity, pC_->pulse_div);	
-        accel_int = pC_->accel_steps_to_int(acceleration, pC_->pulse_div, pC_->ramp_div);	
+	pC_->getIntegerParam(pC_->PulseDiv_[axisNo_], &pulse_div);
+	pC_->getIntegerParam(pC_->RampDiv_[axisNo_], &ramp_div);
+        vel_int = pC_->vel_steps_to_int(velocity, pulse_div);	
+        accel_int = pC_->accel_steps_to_int(acceleration, pulse_div, ramp_div);	
 
-        // set pulse divisor
-        // format: <address> 05 9A <motor #> <value (4)> <checksum>
-        status = pC_->sendIntTMCL(pC_->module_addr, 0x05, 0x9A, (char)axisNo_, pC_->pulse_div);
-        
-        // set ramp divisor
-        // format: <address> 05 99 <motor #> <value (4)> <checksum>
-        status = pC_->sendIntTMCL(pC_->module_addr, 0x05, 0x99, (char)axisNo_, pC_->ramp_div);
+        // // set pulse divisor
+        // // format: <address> 05 9A <motor #> <value (4)> <checksum>
+        // status = pC_->sendIntTMCL(pC_->module_addr, 0x05, 0x9A, (char)axisNo_, pC_->pulse_div);
+        // 
+        // // set ramp divisor
+        // // format: <address> 05 99 <motor #> <value (4)> <checksum>
+        // status = pC_->sendIntTMCL(pC_->module_addr, 0x05, 0x99, (char)axisNo_, pC_->ramp_div);
     }
     else if (pC_->model == "6214") {
         vel_int = NINT(velocity);
@@ -559,28 +589,24 @@ asynStatus TrinamicAxis::home(double minVelocity, double maxVelocity,
     return status;
 }
 
-// TODO: VELOCITY RANGE FOR DIFFERENT CONTROLLERS IS DIFFERENT
 asynStatus TrinamicAxis::moveVelocity(double minVelocity, double maxVelocity, double acceleration)
 {
     asynStatus status;
     double absVelocity = (maxVelocity >= 0.) ? maxVelocity : -1.0*maxVelocity;
+    int pulse_div;
     
     // send accel and velocity
     status = sendAccelAndVelocity(acceleration, absVelocity);
     
     int vel_int;
     if (pC_->model == "6110") {
-        vel_int = pC_->vel_steps_to_int(absVelocity, pC_->pulse_div);	
+	pC_->getIntegerParam(pC_->PulseDiv_[axisNo_], &pulse_div);
+        vel_int = pC_->vel_steps_to_int(absVelocity, pulse_div);	
     }
     if (pC_->model == "6214") {
         vel_int = NINT(absVelocity);
     }
 
-    // if (vel_int > 2047) {
-    //     asynPrint(
-    //     return asynError;    
-    // }
-    
     // if velocity negative, send rotate left (ROL) command, else send rotate right (ROR)
     // format: <address> 01/02 (ROL/ROR) 00 <motor #> <velocity (4)> <checksum>
     if (maxVelocity >= 0) {
@@ -718,7 +744,6 @@ asynStatus TrinamicAxis::poll(bool *moving)
     status = getLimits();
     
     // store current limit values
-    // TODO (?) optimize by returning limit values in getLimits()? 
     pC_->getIntegerParam((int)axisNo_, pC_->motorStatusLowLimit_, &curLeftLimit);
     pC_->getIntegerParam((int)axisNo_, pC_->motorStatusHighLimit_, &curRightLimit);
     
@@ -755,11 +780,36 @@ asynStatus TrinamicController::writeInt32(asynUser *pasynUser, epicsInt32 value)
 	// Set the new value; it can be reverted later if commands fail
 	setIntegerParam(function, value);
 
-    if      (function == PulseDiv_)         status = setPulseDiv(value);
-    else if (function == RampDiv_)          status = setRampDiv(value);
-    else if (function == RunCurrent_)       status = setRunCurrent(value);
-    else if (function == StandbyCurrent_)   status = setStandbyCurrent(value);
-    else if (function == UStepRes_)         status = setUStepRes(value);
+    if      (function == PulseDiv_[0])         status = setPulseDiv(value, 0);
+    else if (function == PulseDiv_[1])         status = setPulseDiv(value, 1);
+    else if (function == PulseDiv_[2])         status = setPulseDiv(value, 2);
+    else if (function == PulseDiv_[3])         status = setPulseDiv(value, 3);
+    else if (function == PulseDiv_[4])         status = setPulseDiv(value, 4);
+    else if (function == PulseDiv_[5])         status = setPulseDiv(value, 5);
+    else if (function == RampDiv_[0])          status = setRampDiv(value, 0);
+    else if (function == RampDiv_[1])          status = setRampDiv(value, 1);
+    else if (function == RampDiv_[2])          status = setRampDiv(value, 2);
+    else if (function == RampDiv_[3])          status = setRampDiv(value, 3);
+    else if (function == RampDiv_[4])          status = setRampDiv(value, 4);
+    else if (function == RampDiv_[5])          status = setRampDiv(value, 5);
+    else if (function == RunCurrent0_)       status = setRunCurrent(value, 0);
+    else if (function == RunCurrent1_)       status = setRunCurrent(value, 1);
+    else if (function == RunCurrent2_)       status = setRunCurrent(value, 2);
+    else if (function == RunCurrent3_)       status = setRunCurrent(value, 3);
+    else if (function == RunCurrent4_)       status = setRunCurrent(value, 4);
+    else if (function == RunCurrent5_)       status = setRunCurrent(value, 5);
+    else if (function == StandbyCurrent0_)   status = setStandbyCurrent(value, 0);
+    else if (function == StandbyCurrent1_)   status = setStandbyCurrent(value, 1);
+    else if (function == StandbyCurrent2_)   status = setStandbyCurrent(value, 2);
+    else if (function == StandbyCurrent3_)   status = setStandbyCurrent(value, 3);
+    else if (function == StandbyCurrent4_)   status = setStandbyCurrent(value, 4);
+    else if (function == StandbyCurrent5_)   status = setStandbyCurrent(value, 5);
+    else if (function == UStepRes0_)         status = setUStepRes(value, 0);
+    else if (function == UStepRes1_)         status = setUStepRes(value, 1);
+    else if (function == UStepRes2_)         status = setUStepRes(value, 2);
+    else if (function == UStepRes3_)         status = setUStepRes(value, 3);
+    else if (function == UStepRes4_)         status = setUStepRes(value, 4);
+    else if (function == UStepRes5_)         status = setUStepRes(value, 5);
     else asynMotorController::writeInt32(pasynUser, value);
 
 	callParamCallbacks();
@@ -779,40 +829,49 @@ asynStatus TrinamicController::writeInt32(asynUser *pasynUser, epicsInt32 value)
     // 
     // 
 
-asynStatus TrinamicController::setPulseDiv(epicsInt32 value) {
+asynStatus TrinamicController::setPulseDiv(epicsInt32 value, int axis) {
     static const char *functionName = "setPulseDiv";
 
-    // set pulse div member that is used in several commands
-    pulse_div = value;
+    asynStatus comStatus = asynSuccess;
+
+	// set pulse divisor
+	// format: <address> 05 9A <motor #> <value (4)> <checksum>
+	
+	if (model == "6110") {
+		comStatus = sendIntTMCL(module_addr, 0x05, 0x9A, (char)axis, (char)value);
+	}
 
     // asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER,
 	// 	"%s:%s, port %s, value = %d\n",
 	// 	driverName, functionName, this->portName, value);
-
-    return asynSuccess;
+	
+    return comStatus;
 }
-asynStatus TrinamicController::setRampDiv(epicsInt32 value){
+asynStatus TrinamicController::setRampDiv(epicsInt32 value, int axis) {
     static const char *functionName = "setRampDiv";
 
-    // set ramp div member that is used in several commands
-    ramp_div = value;
+    asynStatus comStatus = asynSuccess;
+
+	// set ramp divisor
+	// format: <address> 05 99 <motor #> <value (4)> <checksum>
+	if (model == "6110") {
+		comStatus = sendIntTMCL(module_addr, 0x05, 0x99, (char)axis, (char)value);
+	}
 
     // asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER,
 	// 	"%s:%s, port %s, value = %d\n",
 	// 	driverName, functionName, this->portName, value);
 
-    return asynSuccess;
+    return comStatus;
 }
-asynStatus TrinamicController::setRunCurrent(epicsInt32 value) {
+asynStatus TrinamicController::setRunCurrent(epicsInt32 value, int axis) {
     static const char *functionName = "setRunCurrent";
 
     asynStatus comStatus;
 
     // set run current (SAP) for all axes:
     // format: <address> 05 06 <motor #> <current (0-255)(4 bytes)> <checksum>
-    for (char axis = 0; axis<numAxes; axis++) {
-        comStatus = sendIntTMCL(module_addr, 0x05, 0x06, axis, (int)value);
-    }
+	comStatus = sendIntTMCL(module_addr, 0x05, 0x06, axis, (int)value);
 
     // asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER,
 	// 	"%s:%s, port %s, value = %d\n",
@@ -820,16 +879,14 @@ asynStatus TrinamicController::setRunCurrent(epicsInt32 value) {
 
     return comStatus;
 }
-asynStatus TrinamicController::setStandbyCurrent(epicsInt32 value) {
+asynStatus TrinamicController::setStandbyCurrent(epicsInt32 value, int axis) {
     static const char *functionName = "setStandbyCurrent";
 
     asynStatus comStatus;
         
     // set standby current (SAP) for all axes:
     // format: <address> 05 07 <motor #> <current (0-255)(4 bytes)> <checksum>
-    for (char axis = 0; axis<numAxes; axis++) {
         comStatus = sendIntTMCL(module_addr, 0x05, 0x07, axis, (int)value);
-    }
 
     // asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER,
 	// 	"%s:%s, port %s, value = %d\n",
@@ -837,7 +894,7 @@ asynStatus TrinamicController::setStandbyCurrent(epicsInt32 value) {
 
     return comStatus;
 }
-asynStatus TrinamicController::setUStepRes(epicsInt32 value) {
+asynStatus TrinamicController::setUStepRes(epicsInt32 value, int axis) {
     static const char *functionName = "setUStepRes";
 
     asynStatus comStatus;
@@ -845,9 +902,7 @@ asynStatus TrinamicController::setUStepRes(epicsInt32 value) {
     // set microstep resolution (SAP) for all axes:
     // format: <address> 05 8C <motor #> <resolution (0-8)(4 bytes)> <checksum>
     // # of microsteps will be 2^ustep_res steps per full step
-    for (char axis = 0; axis<numAxes; axis++) {
         comStatus = sendIntTMCL(module_addr, 0x05, 0x8C, axis, (int)value);
-    }
 
     // asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER,
 	// 	"%s:%s, port %s, value = %d\n",

@@ -39,11 +39,36 @@
 #define DEFAULT_LIM_MASK 0x0000
 
 // ASYN PARAMS
-#define PulseDivString "PULSE_DIV"
-#define RampDivString "RAMP_DIV"
-#define RunCurrentString "RUN_CURRENT"
-#define StandbyCurrentString "STANDBY_CURRENT"
-#define UStepResString "USTEP_RES"
+#define PulseDivString0 "PULSE_DIV_0"
+#define PulseDivString1 "PULSE_DIV_1"
+#define PulseDivString2 "PULSE_DIV_2"
+#define PulseDivString3 "PULSE_DIV_3"
+#define PulseDivString4 "PULSE_DIV_4"
+#define PulseDivString5 "PULSE_DIV_5"
+#define RampDivString0 "RAMP_DIV_0"
+#define RampDivString1 "RAMP_DIV_1"
+#define RampDivString2 "RAMP_DIV_2"
+#define RampDivString3 "RAMP_DIV_3"
+#define RampDivString4 "RAMP_DIV_4"
+#define RampDivString5 "RAMP_DIV_5"
+#define RunCurrentString0 "RUN_CURRENT_0"
+#define RunCurrentString1 "RUN_CURRENT_1"
+#define RunCurrentString2 "RUN_CURRENT_2"
+#define RunCurrentString3 "RUN_CURRENT_3"
+#define RunCurrentString4 "RUN_CURRENT_4"
+#define RunCurrentString5 "RUN_CURRENT_5"
+#define StandbyCurrentString0 "STANDBY_CURRENT_0"
+#define StandbyCurrentString1 "STANDBY_CURRENT_1"
+#define StandbyCurrentString2 "STANDBY_CURRENT_2"
+#define StandbyCurrentString3 "STANDBY_CURRENT_3"
+#define StandbyCurrentString4 "STANDBY_CURRENT_4"
+#define StandbyCurrentString5 "STANDBY_CURRENT_5"
+#define UStepResString0 "USTEP_RES_0"
+#define UStepResString1 "USTEP_RES_1"
+#define UStepResString2 "USTEP_RES_2"
+#define UStepResString3 "USTEP_RES_3"
+#define UStepResString4 "USTEP_RES_4"
+#define UStepResString5 "USTEP_RES_5"
 
 
 class epicsShareClass TrinamicAxis : public asynMotorAxis
@@ -84,8 +109,6 @@ class epicsShareClass TrinamicController : public asynMotorController
         TrinamicAxis* getAxis(asynUser *pasynUser);
         TrinamicAxis* getAxis(int axisNo);
         
-        // need to rewrite methods since raw binary is used in commands and this
-        // method uses strlen (will be wrong if data contains byte of 0)
         asynStatus writeReadController();
         asynStatus writeReadController(const char *output, char *input, 
                         size_t maxChars, size_t *nread, double timeout);
@@ -93,37 +116,52 @@ class epicsShareClass TrinamicController : public asynMotorController
         void calcTrinamicChecksum(char* command);
         int vel_steps_to_int (double velocity, unsigned int pulse_div);
         unsigned int accel_steps_to_int (double acceleration, unsigned int pulse_div, 
-                        unsigned int ramp_div);
+		unsigned int ramp_div);
 
         // asynportdriver function for writing extra params:
         virtual asynStatus writeInt32(asynUser *pasynUser, epicsInt32 value);
 
         // member variables to be set by asyn functions
-        unsigned int pulse_div = DEFAULT_PULSE_DIV;
-        unsigned int ramp_div = DEFAULT_RAMP_DIV;
-        unsigned int run_current = DEFAULT_RUN_CURRENT; 
-        unsigned int standby_current = DEFAULT_STANDBY_CURRENT; 
-        unsigned int ustep_res = DEFAULT_USTEP_RES; 
+        // unsigned int pulse_div = DEFAULT_PULSE_DIV;
+        // unsigned int ramp_div = DEFAULT_RAMP_DIV;
+        // unsigned int run_current = DEFAULT_RUN_CURRENT; 
+        // unsigned int standby_current = DEFAULT_STANDBY_CURRENT; 
+        // unsigned int ustep_res = DEFAULT_USTEP_RES; 
 
         int limMask = DEFAULT_LIM_MASK;
 
-        std::string model = "6214";
+        std::string model = "6214"; // default model
 
         int numAxes;
         
         char module_addr = TRINAMIC_ADDR;
     protected:
-        int PulseDiv_;
-        int RampDiv_;
-        int RunCurrent_;
-        int StandbyCurrent_;
-        int UStepRes_;
+        int PulseDiv_[6];
+        int RampDiv_[6];
+        int RunCurrent0_;
+        int RunCurrent1_;
+        int RunCurrent2_;
+        int RunCurrent3_;
+        int RunCurrent4_;
+        int RunCurrent5_;
+        int StandbyCurrent0_;
+        int StandbyCurrent1_;
+        int StandbyCurrent2_;
+        int StandbyCurrent3_;
+        int StandbyCurrent4_;
+        int StandbyCurrent5_;
+        int UStepRes0_;
+        int UStepRes1_;
+        int UStepRes2_;
+        int UStepRes3_;
+        int UStepRes4_;
+        int UStepRes5_;
     private:
-        asynStatus setPulseDiv(epicsInt32 value);
-        asynStatus setRampDiv(epicsInt32 value);
-        asynStatus setRunCurrent(epicsInt32 value);
-        asynStatus setStandbyCurrent(epicsInt32 value);
-        asynStatus setUStepRes(epicsInt32 value);
+        asynStatus setPulseDiv(epicsInt32 value, int axis);
+        asynStatus setRampDiv(epicsInt32 value, int axis);
+        asynStatus setRunCurrent(epicsInt32 value, int axis);
+        asynStatus setStandbyCurrent(epicsInt32 value, int axis);
+        asynStatus setUStepRes(epicsInt32 value, int axis);
         
     friend class TrinamicAxis;
 };
