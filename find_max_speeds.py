@@ -4,6 +4,8 @@
 import math
 import sys
 
+steps_per_rev = 200
+
 def vel_int_to_steps(v_int, pulse_div):
     v_steps = (16*(10**6) * v_int) / (2**pulse_div * 2048*32)
     return v_steps
@@ -38,9 +40,9 @@ if __name__ == '__main__':
         # find max vel for different pulse divs
         max_vel = vel_int_to_steps(2047, i)
         for j in range(0, 9):
-            rps = max_vel/(200*(2**j))
+            rps = max_vel/(steps_per_rev*(2**j))
             rpm = rps*60
-            print("pulse div: " + str(i) + " ustep res: " + str(j) + " max vel (steps): " + str(max_vel) + " rps: " + str(rps) + " rpm: " + str(rpm)) 
+            print("pulse div: " + str(i) + ", ustep res: " + str(j) + ", max vel (microsteps/s): " + str(max_vel) + ", rps: " + str(rps) + ", rpm: " + str(rpm)) 
 
 
     sys.exit()

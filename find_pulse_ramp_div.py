@@ -51,7 +51,7 @@ if __name__ == '__main__':
     lower_accel_lim_steps = accel_int_to_steps(lower_accel_lim, pulse_div, ramp_div) 
     upper_accel_lim_steps = accel_int_to_steps(upper_accel_lim, pulse_div, ramp_div) 
     
-    print("lower accel limit: " + str(lower_accel_lim) + " (" + str(lower_accel_lim_steps) + " microsteps/s^2), upper accel limit: " + str(upper_accel_lim) + " (" + str(upper_accel_lim_steps) + ") microsteps/s^2")
+    print("lower accel limit: " + str(lower_accel_lim) + " (" + str(lower_accel_lim_steps) + " microsteps/s^2), upper accel limit: " + str(upper_accel_lim) + " (" + str(upper_accel_lim_steps) + " microsteps/s^2)")
 
 
 
