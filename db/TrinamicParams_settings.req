@@ -1,0 +1,11 @@
+$(P)$(M):pulseDiv_RBV
+$(P)$(M):rampDiv_RBV
+$(P)$(M):runCurrent_RBV
+$(P)$(M):standbyCurrent_RBV
+$(P)$(M):uStepRes_RBV
+
+$(P)$(M):setPulseDiv
+$(P)$(M):setRampDiv
+$(P)$(M):setRunCurrent
+$(P)$(M):setStandbyCurrent
+$(P)$(M):setUStepRes

@@ -1,0 +1,106 @@
+# DB should be loaded on a per motor basis
+
+record(ai, "$(P)$(M):pulseDiv_RBV")
+{
+    field(DTYP, "asynInt32")
+    field(INP,  "@asyn($(PORT),$(ADDR))PULSE_DIV_RBV_$(AXIS)")
+    field(LINR, "NO CONVERSION")
+    field(PREC, "0")
+    field(SCAN, "I/O Intr")
+}
+
+record(ai, "$(P)$(M):rampDiv_RBV")
+{
+    field(DTYP, "asynInt32")
+    field(INP,  "@asyn($(PORT),$(ADDR))RAMP_DIV_RBV_$(AXIS)")
+    field(LINR, "NO CONVERSION")
+    field(PREC, "0")
+    field(SCAN, "I/O Intr")
+}
+
+record(ai, "$(P)$(M):runCurrent_RBV")
+{
+    field(DTYP, "asynInt32")
+    field(INP,  "@asyn($(PORT),$(ADDR))RUN_CURRENT_RBV_$(AXIS)")
+    field(LINR, "NO CONVERSION")
+    field(PREC, "0")
+    field(SCAN, "I/O Intr")
+}
+
+record(ai, "$(P)$(M):standbyCurrent_RBV")
+{
+    field(DTYP, "asynInt32")
+    field(INP,  "@asyn($(PORT),$(ADDR))STANDBY_CURRENT_RBV_$(AXIS)")
+    field(LINR, "NO CONVERSION")
+    field(PREC, "0")
+    field(SCAN, "I/O Intr")
+}
+
+record(ai, "$(P)$(M):uStepRes_RBV")
+{
+    field(DTYP, "asynInt32")
+    field(INP,  "@asyn($(PORT),$(ADDR))USTEP_RES_RBV_$(AXIS)")
+    field(LINR, "NO CONVERSION")
+    field(PREC, "0")
+    field(SCAN, "I/O Intr")
+}
+
+record(ao, "$(P)$(M):setPulseDiv")
+{
+	field(DESC, "$(M) Pulse Divisor")
+	field(DTYP, "asynInt32")
+	field(OUT,  "@asyn($(PORT),$(ADDR))PULSE_DIV_$(AXIS)")
+	field(VAL,  3)
+	field(DRVL, 0)
+	field(DRVH, 13)
+	field(PINI, "YES")
+	field(PREC, 0)
+}
+
+record(ao, "$(P)$(M):setRampDiv")
+{
+	field(DESC, "$(M) Ramp Divisor")
+	field(DTYP, "asynInt32")
+	field(OUT,  "@asyn($(PORT),$(ADDR))RAMP_DIV_$(AXIS)")
+	field(VAL,  7)
+	field(DRVL, 0)
+	field(DRVH, 13)
+	field(PINI, "YES")
+	field(PREC, 0)
+}
+
+record(ao, "$(P)$(M):setRunCurrent")
+{
+	field(DESC, "$(M) Run Current")
+	field(DTYP, "asynInt32")
+	field(OUT,  "@asyn($(PORT),$(ADDR))RUN_CURRENT_$(AXIS)")
+	field(VAL,  127)
+	field(DRVL, 0)
+	field(DRVH, 255)
+	field(PINI, "YES")
+	field(PREC, 0)
+}
+
+record(ao, "$(P)$(M):setStandbyCurrent")
+{
+	field(DESC, "$(M) Standby Current")
+	field(DTYP, "asynInt32")
+	field(OUT,  "@asyn($(PORT),$(ADDR))STANDBY_CURRENT_$(AXIS)")
+	field(VAL,  8)
+	field(DRVL, 0)
+	field(DRVH, 255)
+	field(PINI, "YES")
+	field(PREC, 0)
+}
+
+record(ao, "$(P)$(M):setUStepRes")
+{
+	field(DESC, "$(M) Microstep Resolution")
+	field(DTYP, "asynInt32")
+	field(OUT,  "@asyn($(PORT),$(ADDR))USTEP_RES_$(AXIS)")
+	field(VAL,  8)
+	field(DRVL, 0)
+	field(DRVH, 8)
+	field(PINI, "YES")
+	field(PREC, 0)
+}
